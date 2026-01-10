@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./tutormate.db"
+}
+
+model Student {
+  id         String      @id
+  name       String
+  grade      String
+  school     String
+  parentName String
+  contact    String
+  batchId    String
+  batch      Batch       @relation(fields: [batchId], references: [id])
+  joinedDate String
+  status     String
+
+  fees       FeeRecord[]
+  exams      ExamResult[]
+}
+
+model Batch {
+  id        String    @id
+  name      String
+  subject   String
+  schedule  String
+  color     String
+  slots     Json
+
+  students  Student[]
+  attendance AttendanceRecord[]
+  messages  ChatMessage[]
+  notices   Notice[]
+}
+
+model AttendanceRecord {
+  id        String   @id
+  batchId   String
+  batch     Batch    @relation(fields: [batchId], references: [id])
+  date      String
+  presentStudentIds Json
+}
+
+model FeeRecord {
+  id        String   @id
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  amount    Int
+  dueDate   String
+  status    String
+  type      String
+  description String?
+  month       String?
+  paidOn      String?
+
+  payments  Payment[]
+}
+
+model Payment {
+  id     String   @id
+  feeId  String
+  fee    FeeRecord @relation(fields: [feeId], references: [id])
+  date   String
+  amount Int
+  method String
+  note   String?
+}
+
+model ExamResult {
+  id            String  @id
+  studentId     String
+  student       Student @relation(fields: [studentId], references: [id])
+  examName      String
+  date          String
+  marksObtained Int
+  totalMarks    Int
+  subject       String
+}
+
+model ChatMessage {
+  id         String  @id
+  batchId    String
+  batch      Batch   @relation(fields: [batchId], references: [id])
+  senderId   String
+  senderName String
+  text       String
+  timestamp  String
+  role       String
+}
+
+model Notice {
+  id      String @id
+  title   String
+  content String
+  date    String
+  batchId String
+  batch   Batch  @relation(fields: [batchId], references: [id])
+}

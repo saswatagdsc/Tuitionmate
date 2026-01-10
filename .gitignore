@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Vite / bundler cache
+.vite/
+.cache/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Coverage / tests
+coverage/
+*.lcov
+
+# Generic build outputs
+build/
+/out/
+
+# Android (if present in repo)
+android/.gradle/
+android/local.properties
+android/.idea/
+android/app/build/
+android/build/
