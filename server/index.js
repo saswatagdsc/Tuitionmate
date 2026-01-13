@@ -1509,18 +1509,21 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
         // Generate Token
         const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        
+
         user.resetToken = token;
         user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
         await user.save();
 
-        const resetLink = `http://${req.get('host').replace(/:\d+$/, ':3000')}/?resetToken=${token}`;
-        
+        // Use frontend URL from environment variable, fallback to localhost
+        // Use frontend URL from environment variable, fallback to production Vercel URL, then localhost
+        const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tuitionmate.vercel.app' || 'http://localhost:3000';
+        const resetLink = `${FRONTEND_URL}/?resetToken=${token}`;
+
         const subject = "Reset Your Password - TutorMate";
         const text = `You requested a password reset.\n\nClick the link below to verify your identity and set a new password:\n\n${resetLink}\n\n(Link expires in 1 hour)\n\nIf you did not request this, please ignore this email.`;
-        
+
         await sendEmail(email, subject, text);
-        
+
         res.json({ message: "If the email exists, a reset link has been sent." });
     } catch (e) {
         res.status(500).json({ error: e.message });
