@@ -5,7 +5,11 @@ import { Sparkles, Send, Copy, BookOpen } from 'lucide-react';
 
 // --- AI Grading Modal logic (reused from Batches) ---
 const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
-  const { currentUser } = useData();
+  const { currentUser, batches, students } = useData();
+  // For teachers: select batch and student
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  // For students: auto-select their batch and self
   const [studentImage, setStudentImage] = useState<File | null>(null);
   const [solutionKey, setSolutionKey] = useState('');
   const [maxMarks, setMaxMarks] = useState<number>(10);
@@ -34,11 +38,23 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
               if (studentImage) {
                 const formData = new FormData();
                 formData.append('file', studentImage);
-                // Auto-add teacherId if available
+                // Auto-add teacherId
                 if (currentUser?.role === 'teacher') {
                   formData.append('teacherId', currentUser.id);
+                  formData.append('batchId', selectedBatchId);
+                  formData.append('studentId', selectedStudentId);
+                  // Optionally add student name/class for backend
+                  const studentObj = students.find(s => s.id === selectedStudentId);
+                  if (studentObj) {
+                    formData.append('studentName', studentObj.name);
+                    formData.append('studentClass', studentObj.class);
+                  }
                 } else if (currentUser?.role === 'student' && currentUser.teacherId) {
                   formData.append('teacherId', currentUser.teacherId);
+                  formData.append('batchId', currentUser.batchId || (currentUser.batchIds?.[0] || ''));
+                  formData.append('studentId', currentUser.id);
+                  formData.append('studentName', currentUser.name);
+                  formData.append('studentClass', currentUser.class);
                 }
                 const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
                 const uploadRes = await fetch(apiUrl + '/materials', {
@@ -63,6 +79,24 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
               setGradingLoading(false);
             }
           }} className="space-y-4">
+            {currentUser?.role === 'teacher' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Select Batch</label>
+                <select className="w-full p-2 border rounded mb-2" value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)} required>
+                  <option value="">Select batch</option>
+                  {batches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.subject})</option>
+                  ))}
+                </select>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Select Student</label>
+                <select className="w-full p-2 border rounded" value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} required>
+                  <option value="">Select student</option>
+                  {students.filter(s => s.batchIds?.includes(selectedBatchId)).map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.class})</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Student Answer Image</label>
               <input type="file" accept="image/*" required onChange={e => setStudentImage(e.target.files?.[0] || null)} />
