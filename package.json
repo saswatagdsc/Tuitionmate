@@ -20,6 +20,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
     "geoip-lite": "^1.4.10",
+    "json2csv": "^6.0.0-alpha.2",
     "lucide-react": "^0.562.0",
     "mongoose": "^9.1.2",
     "multer": "^2.0.2",
