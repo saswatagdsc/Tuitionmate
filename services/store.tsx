@@ -122,20 +122,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Strict Isolation: Only Super Admin sees global data. Everyone else (Teacher/Student) is scoped.
         // If role matches 'superadmin', no filter. Otherwise, filter by user ID (assumed to be teacherId).
         const isSuperAdmin = currentUser.role === 'superadmin';
-        
+
         // Determine the Teacher ID to fetch data for
         // Teachers see their own data. Students see data from their assigned teacher.
         let queryId = currentUser.id;
         if (currentUser.role === 'student' && currentUser.teacherId) {
-            queryId = currentUser.teacherId;
+          queryId = currentUser.teacherId;
         } else if (currentUser.role === 'student' && !currentUser.teacherId) {
-            console.warn("Student user missing teacherId link. Data fetch may be empty.");
+          console.warn("Student user missing teacherId link. Data fetch may be empty.");
         }
 
-        const query = isSuperAdmin ? '' : `?teacherId=${queryId}`;
-        
+        // Build query string for non-superadmin users
+        let query = '';
+        if (!isSuperAdmin) {
+          query = `?teacherId=${queryId}`;
+        }
+
+        let noticesUrl = `${API_BASE}/notices${query}`;
+        if (currentUser.role === 'student') {
+          // Pass batchId and role for student filtering
+          const batchId = currentUser.batchId || '';
+          noticesUrl = `${API_BASE}/notices?teacherId=${queryId}&batchId=${batchId}&role=student`;
+        }
+
         const [
-          sRes, 
+          sRes,
           bRes, aRes, fRes, eRes, mRes, nRes,
           enqRes, expRes, matRes, holRes
         ] = await Promise.all([
@@ -145,7 +156,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           fetch(`${API_BASE}/fees${query}`),
           fetch(`${API_BASE}/exams${query}`),
           fetch(`${API_BASE}/messages${query}`),
-          fetch(`${API_BASE}/notices${query}`),
+          fetch(noticesUrl),
           fetch(`${API_BASE}/enquiries${query}`),
           fetch(`${API_BASE}/expenses${query}`),
           fetch(`${API_BASE}/materials${query}`),
@@ -166,7 +177,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (eRes.ok) setExams(await eRes.json());
         if (mRes.ok) setMessages(await mRes.json());
         if (nRes.ok) setNotices(await nRes.json());
-        
+
         if (enqRes.ok) setEnquiries(await enqRes.json());
         if (expRes.ok) setExpenses(await expRes.json());
         if (matRes.ok) setStudyMaterials(await matRes.json());
