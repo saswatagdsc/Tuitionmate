@@ -559,6 +559,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('currentUser', JSON.stringify(user));
   };
   
+  useEffect(() => {
+    // Listen for superadmin-logout event
+    const handler = () => logout();
+    window.addEventListener('superadmin-logout', handler);
+    return () => window.removeEventListener('superadmin-logout', handler);
+  }, []);
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');

@@ -176,13 +176,39 @@ export const SuperAdminDashboard: React.FC = () => {
         </nav>
 
         <div className="border-t border-slate-800 pt-4 mt-auto">
-          <div className="flex items-center gap-3 px-2">
+          <div className="flex items-center gap-3 px-2 mb-3">
             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center font-bold">A</div>
             <div>
               <p className="text-sm font-medium">Administrator</p>
               <p className="text-xs text-slate-400">Super Access</p>
             </div>
           </div>
+          <button
+            onClick={() => {
+              // Use logout from context
+              if (window.confirm('Are you sure you want to logout?')) {
+                // Dynamically import useData to avoid hook in non-component
+                // Instead, trigger a custom event for logout
+                window.dispatchEvent(new CustomEvent('superadmin-logout'));
+              }
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 mt-1 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" /></svg>
+            Logout
+          </button>
+          <button
+            onClick={() => {
+              // For change account, just logout for now
+              if (window.confirm('Change account? This will log you out.')) {
+                window.dispatchEvent(new CustomEvent('superadmin-logout'));
+              }
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 mt-2 rounded-xl bg-slate-700 text-white font-bold hover:bg-slate-800 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm2 0a5 5 0 11-10 0 5 5 0 0110 0zm2 7v-1a4 4 0 00-4-4H9a4 4 0 00-4 4v1" /></svg>
+            Change Account
+          </button>
         </div>
       </div>
 
