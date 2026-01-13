@@ -1,5 +1,10 @@
-
-
+// --- Cloudinary Setup ---
+import { v2 as cloudinary } from 'cloudinary';
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 import express from 'express';
 import cors from 'cors';
@@ -853,7 +858,24 @@ app.post('/api/exams', upload.single('marksheet'), async (req, res) => {
 
     let marksheetUrl = '';
     if (req.file) {
-      marksheetUrl = `/uploads/marksheets/${req.file.filename}`;
+      // Enforce file size limit (5MB)
+      if (req.file.size > 5 * 1024 * 1024) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'File too large. Max 5MB allowed.' });
+      }
+      // Upload to Cloudinary
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'marksheets',
+          resource_type: 'auto',
+        });
+        marksheetUrl = uploadResult.secure_url;
+        // Delete local file after upload
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        fs.unlinkSync(req.file.path);
+        return res.status(500).json({ error: 'Cloudinary upload failed.' });
+      }
     }
 
     const exam = new Exam({
@@ -1078,6 +1100,22 @@ app.get('/api/materials/:id/download', async (req, res) => {
     res.download(filePath);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// Secure marksheet download endpoint (students must be enrolled)
+app.get('/api/marksheets/:filename/download', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const { studentId, examId } = req.query;
+    if (!studentId || !examId) return res.status(400).json({ error: 'studentId and examId required' });
+    const exam = await Exam.findOne({ id: examId });
+    if (!exam) return res.status(404).json({ error: 'Exam not found' });
+    if (exam.studentId !== studentId) return res.status(403).json({ error: 'Access denied' });
+    // Send file
+    const filePath = path.join(__dirname, '../uploads/marksheets', filename);
+    res.download(filePath);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Holidays
 app.get('/api/holidays', async (req, res) => {
   try {
