@@ -1,33 +1,6 @@
-// ...existing imports and setup...
 
-import express from 'express';
-import cors from 'cors';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import bcrypt from 'bcryptjs';
-import fetch from 'node-fetch';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const envPath = path.resolve(__dirname, '../.env');
-dotenv.config({ path: envPath });
 
-// ...existing code...
 
-const app = express();
-app.use(express.json({ limit: '50mb' }));
-
-// Endpoint for direct marksheet upload (used by frontend before result submission)
-app.post('/api/upload/marksheet', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const url = `/uploads/marksheets/${req.file.filename}`;
-    res.json({ url });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
