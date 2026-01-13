@@ -1,36 +1,42 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useData } from '../services/store';
 import { Bell, Calendar, Plus, X, Megaphone, Users } from 'lucide-react';
+
 
 export const Notices: React.FC = () => {
   const { notices, currentUser, batches, addNotice } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Form State
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetBatchId, setTargetBatchId] = useState('all');
+  const [filteredNotices, setFilteredNotices] = useState(notices);
 
-  // Filter notices based on role
-  const visibleNotices = notices.filter(n => {
-    if (currentUser?.role === 'teacher') return true; // Teacher sees all
-    // Student sees 'all' notices, notices without batchId, or notices for their specific batch
-    const noticeBatchId = n.batchId || 'all';
-    return noticeBatchId === 'all' || noticeBatchId === currentUser?.batchId;
-  });
+  useEffect(() => {
+    // Refetch or filter notices for student
+    if (currentUser?.role === 'student') {
+      setFilteredNotices(
+        notices.filter(n => {
+          const noticeBatchId = n.batchId || 'all';
+          return noticeBatchId === 'all' || noticeBatchId === currentUser.batchId;
+        })
+      );
+    } else {
+      setFilteredNotices(notices);
+    }
+  }, [notices, currentUser]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !content) return;
-
     addNotice({
       id: `n${Date.now()}`,
       title,
       content,
       date: new Date().toISOString().split('T')[0],
-      batchId: targetBatchId
+      batchId: targetBatchId,
+      teacherId: currentUser?.role === 'teacher' ? currentUser.id : undefined
     });
-
     setIsModalOpen(false);
     setTitle('');
     setContent('');
@@ -60,7 +66,7 @@ export const Notices: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {visibleNotices.map((notice) => (
+        {filteredNotices.map((notice) => (
           <div key={notice.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${notice.batchId === 'all' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
             

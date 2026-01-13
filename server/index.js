@@ -913,10 +913,16 @@ app.post('/api/messages', async (req, res) => {
 });
 
 // Notices
+// Notices: GET filters for students by batchId, POST sends email to batch
 app.get('/api/notices', async (req, res) => {
   try {
-    const { teacherId } = req.query;
-    const filter = teacherId ? { teacherId } : {};
+    const { teacherId, batchId, role } = req.query;
+    let filter = {};
+    if (teacherId) filter.teacherId = teacherId;
+    if (role === 'student' && batchId) {
+      // Student: show notices for their batch or 'all'
+      filter['$or'] = [ { batchId: batchId }, { batchId: 'all' }, { batchId: null }, { batchId: undefined } ];
+    }
     const notices = await Notice.find(filter);
     res.json(cleanList(notices));
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -924,8 +930,20 @@ app.get('/api/notices', async (req, res) => {
 app.post('/api/notices', async (req, res) => {
   try {
     if (!req.body.teacherId) return res.status(400).json({ error: 'teacherId is required' });
-    const notice = new Notice(req.body);
+    // Always set teacherId
+    const notice = new Notice({ ...req.body, teacherId: req.body.teacherId });
     await notice.save();
+
+    // Notify students in batch (if batchId is not 'all')
+    if (notice.batchId && notice.batchId !== 'all') {
+      const students = await Student.find({ batchIds: notice.batchId });
+      for (const student of students) {
+        if (student.email) {
+          let emailText = `Dear ${student.name},\n\nNew notice: ${notice.title}\n${notice.content}\n\nRegards, TutorMate`;
+          await sendEmail(student.email, `New Notice: ${notice.title}`, emailText);
+        }
+      }
+    }
     res.json(clean(notice));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
