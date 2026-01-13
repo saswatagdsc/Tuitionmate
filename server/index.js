@@ -975,7 +975,7 @@ app.get('/api/materials', async (req, res) => {
 });
 
 // --- Multer for material upload ---
-import multer from 'multer';
+// Reuse the already imported multer above. Only define new storage and upload instance.
 const materialStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, '../uploads/materials'));
