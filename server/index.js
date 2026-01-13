@@ -1,3 +1,13 @@
+// Endpoint for direct marksheet upload (used by frontend before result submission)
+app.post('/api/upload/marksheet', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const url = `/uploads/marksheets/${req.file.filename}`;
+    res.json({ url });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';

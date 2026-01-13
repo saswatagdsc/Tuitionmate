@@ -5,9 +5,9 @@ import { BookOpen, Link as LinkIcon, FileText, Video, Upload } from 'lucide-reac
 
 
 export const StudyMaterials: React.FC = () => {
-  const { studyMaterials, currentUser, students, batches } = useData();
+  const { studyMaterials, currentUser, students, batches, addStudyMaterial } = useData();
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Partial<StudyMaterial>>({ type: 'pdf' });
+  const [formData, setFormData] = useState<Partial<StudyMaterial>>({});
 
   // Get current student info
   let student = null;
@@ -28,7 +28,19 @@ export const StudyMaterials: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // ...existing code for teacher upload...
+    if (!formData.title || !formData.subject || !formData.type || !formData.url || !formData.batchId) {
+      alert('Please fill all required fields and select a batch.');
+      return;
+    }
+    // Compose material object
+    await addStudyMaterial({
+      ...formData,
+      id: `mat_${Date.now()}`,
+      uploadDate: new Date().toISOString(),
+    } as StudyMaterial);
+    setShowForm(false);
+    setFormData({});
+    alert('Material uploaded and students in the batch will be notified.');
   };
 
   const getIcon = (type: StudyMaterial['type']) => {
@@ -70,17 +82,24 @@ export const StudyMaterials: React.FC = () => {
               value={formData.subject || ''}
               onChange={e => setFormData({...formData, subject: e.target.value})}
             />
-            <input
-              placeholder="Target Class"
-              className="p-2 border rounded"
-              value={formData.class || ''}
-              onChange={e => setFormData({...formData, class: e.target.value})}
-            />
             <select
+              required
               className="p-2 border rounded"
-              value={formData.type}
+              value={formData.batchId || ''}
+              onChange={e => setFormData({...formData, batchId: e.target.value})}
+            >
+              <option value="">Select Batch</option>
+              {batches.map(b => (
+                <option key={b.id} value={b.id}>{b.name} ({b.subject})</option>
+              ))}
+            </select>
+            <select
+              required
+              className="p-2 border rounded"
+              value={formData.type || ''}
               onChange={e => setFormData({...formData, type: e.target.value as any})}
             >
+              <option value="">Select Type</option>
               <option value="pdf">PDF Document</option>
               <option value="video">Video URL</option>
               <option value="link">External Link</option>

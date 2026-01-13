@@ -46,6 +46,7 @@ export const Menu: React.FC<MenuProps> = ({ onClose, onNavigate, currentView }) 
 
   const studentFeatures = [
     { id: 'dashboard', label: 'My Portal', icon: <LayoutDashboard size={32} />, color: 'bg-blue-50 text-blue-600' },
+    { id: 'materials', label: 'Study Materials', icon: <BookOpen size={32} />, color: 'bg-indigo-50 text-indigo-600' },
     { id: 'chat', label: 'Class Chat', icon: <MessageCircle size={32} />, color: 'bg-cyan-50 text-cyan-600' },
     { id: 'notices', label: 'Notices', icon: <Bell size={32} />, color: 'bg-teal-50 text-teal-600' },
     { id: 'fees', label: 'My Fees', icon: <IndianRupee size={32} />, color: 'bg-yellow-50 text-yellow-600' },
