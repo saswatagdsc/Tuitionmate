@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useData } from '../services/store';
 import { generateNotice, generateStudyTip } from '../services/gemini';
 import { Sparkles, Send, Copy, BookOpen } from 'lucide-react';
 
 // --- AI Grading Modal logic (reused from Batches) ---
 const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const { currentUser } = useData();
   const [studentImage, setStudentImage] = useState<File | null>(null);
   const [solutionKey, setSolutionKey] = useState('');
   const [maxMarks, setMaxMarks] = useState<number>(10);
@@ -32,7 +34,12 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
               if (studentImage) {
                 const formData = new FormData();
                 formData.append('file', studentImage);
-                // You may need to add more fields if backend requires (e.g., title, teacherId)
+                // Auto-add teacherId if available
+                if (currentUser?.role === 'teacher') {
+                  formData.append('teacherId', currentUser.id);
+                } else if (currentUser?.role === 'student' && currentUser.teacherId) {
+                  formData.append('teacherId', currentUser.teacherId);
+                }
                 const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
                 const uploadRes = await fetch(apiUrl + '/materials', {
                   method: 'POST',
