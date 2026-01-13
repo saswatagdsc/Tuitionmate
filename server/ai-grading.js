@@ -23,24 +23,47 @@ router.post('/grade-theory', async (req, res) => {
 
     const userPrompt = `Here is the [Student_Image]: ${studentImageUrl}\nand the [Ideal_Solution]: ${idealSolution}\n\n1. Grade the work out of ${maxMarks}.\n2. Identify the exact step where the first error occurred.\n3. Categorize the weakness into one of these tags: 'Calculation Error', 'Formula Misuse', 'Incomplete Logic', or 'Conceptual Gap'.\n4. Provide a 1-sentence encouraging feedback for the student.\n\nReturn the response STRICTLY in JSON format:\n{\n  "total_marks_awarded": float,\n  "error_step_description": "string",\n  "weakness_tag": "string",\n  "feedback_to_student": "string",\n  "remedial_topic_suggestion": "string"\n}`;
 
-    // Call Gemini API (replace with your actual Gemini API endpoint and auth)
-    const geminiRes = await fetch(process.env.GEMINI_API_URL, {
+    // Call Gemini 1.5 Pro API for AI grading
+    const geminiUrl = `${process.env.GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`;
+    const geminiRes = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ]
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: `${systemPrompt}\n\n${userPrompt}`
+              },
+              {
+                inline_data: {
+                  mime_type: 'image/jpeg',
+                  data: studentImageUrl
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 1024
+        }
       })
     });
     const aiResult = await geminiRes.json();
     let parsed;
     try {
-      parsed = JSON.parse(aiResult.choices[0].message.content);
+      // Gemini API returns response in candidates array
+      const responseText = aiResult.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!responseText) {
+        return res.status(500).json({ error: 'No response from Gemini', raw: aiResult });
+      }
+      parsed = JSON.parse(responseText);
     } catch (e) {
       return res.status(500).json({ error: 'AI did not return valid JSON', raw: aiResult });
     }
