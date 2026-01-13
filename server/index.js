@@ -1,3 +1,5 @@
+// Export Attendance for attendanceReport.js
+export { Attendance };
 // --- Cloudinary Setup ---
 import { v2 as cloudinary } from 'cloudinary';
 cloudinary.config({

@@ -1,6 +1,6 @@
 import { Parser } from 'json2csv';
 import mongoose from 'mongoose';
-import Attendance from './index.js';
+import { Attendance } from './index.js';
 
 export async function generateAttendanceCSV({ studentId, batchId, from, to }) {
   const filter = {};
