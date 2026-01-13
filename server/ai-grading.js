@@ -2,7 +2,20 @@ import multer from 'multer';
 import mammoth from 'mammoth';
 import * as pdfParse from 'pdf-parse';
 import Tesseract from 'tesseract.js';
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+const allowedFields = [
+  { name: 'studentAnswer', maxCount: 1 },
+  { name: 'idealSolution', maxCount: 1 },
+  { name: 'answer', maxCount: 1 },
+  { name: 'solution', maxCount: 1 },
+  { name: 'studentFile', maxCount: 1 },
+  { name: 'solutionFile', maxCount: 1 }
+];
+
 // AI Grading and Weakness Spotter API for TutorMate
 import express from 'express';
 import fetch from 'node-fetch';
@@ -17,10 +30,7 @@ const router = express.Router();
 const getExam = () => mongoose.models.Exam;
 const getStudyMaterial = () => mongoose.models.StudyMaterial;
 
-router.post('/grade-theory', upload.fields([
-  { name: 'studentAnswer', maxCount: 1 },
-  { name: 'idealSolution', maxCount: 1 }
-]), async (req, res) => {
+router.post('/grade-theory', upload.fields(allowedFields), async (req, res) => {
   try {
     const { maxMarks, studentId, batchId, teacherId, subject, examName, date } = req.body;
     if (!maxMarks || !studentId || !batchId || !teacherId || !subject) {
@@ -48,19 +58,23 @@ router.post('/grade-theory', upload.fields([
       }
     }
 
+    // Pick the first available field for each
+    let studentFile = req.files?.studentAnswer?.[0] || req.files?.answer?.[0] || req.files?.studentFile?.[0];
+    let solutionFile = req.files?.idealSolution?.[0] || req.files?.solution?.[0] || req.files?.solutionFile?.[0];
+
     let studentAnswerText = '';
     let idealSolutionText = '';
     let studentAnswerUrl = '';
     let idealSolutionUrl = '';
-    if (req.files?.studentAnswer?.[0]) {
-      studentAnswerText = await extractText(req.files.studentAnswer[0]);
-      studentAnswerUrl = req.files.studentAnswer[0].originalname;
+    if (studentFile) {
+      studentAnswerText = await extractText(studentFile);
+      studentAnswerUrl = studentFile.originalname;
     } else if (req.body.studentAnswerText) {
       studentAnswerText = req.body.studentAnswerText;
     }
-    if (req.files?.idealSolution?.[0]) {
-      idealSolutionText = await extractText(req.files.idealSolution[0]);
-      idealSolutionUrl = req.files.idealSolution[0].originalname;
+    if (solutionFile) {
+      idealSolutionText = await extractText(solutionFile);
+      idealSolutionUrl = solutionFile.originalname;
     } else if (req.body.idealSolutionText) {
       idealSolutionText = req.body.idealSolutionText;
     }
