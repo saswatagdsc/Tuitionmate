@@ -22,13 +22,16 @@
     "geoip-lite": "^1.4.10",
     "json2csv": "^6.0.0-alpha.2",
     "lucide-react": "^0.562.0",
+    "mammoth": "^1.11.0",
     "mongoose": "^9.1.2",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
+    "pdf-parse": "^2.4.5",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0",
+    "tesseract.js": "^7.0.0",
     "xlsx": "latest"
   },
   "devDependencies": {

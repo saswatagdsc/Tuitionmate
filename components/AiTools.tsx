@@ -10,8 +10,9 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   // For students: auto-select their batch and self
-  const [studentImage, setStudentImage] = useState<File | null>(null);
-  const [solutionKey, setSolutionKey] = useState('');
+  const [studentAnswerFile, setStudentAnswerFile] = useState<File | null>(null);
+  const [solutionFile, setSolutionFile] = useState<File | null>(null);
+  const [solutionText, setSolutionText] = useState('');
   const [maxMarks, setMaxMarks] = useState<number>(10);
   const [gradingResult, setGradingResult] = useState<any>(null);
   const [gradingLoading, setGradingLoading] = useState(false);
@@ -34,41 +35,50 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
             setGradingError(null);
             setGradingResult(null);
             try {
-              let imageUrl = '';
-              if (studentImage) {
-                const formData = new FormData();
-                formData.append('file', studentImage);
-                // Auto-add teacherId
-                if (currentUser?.role === 'teacher') {
-                  formData.append('teacherId', currentUser.id);
-                  formData.append('batchId', selectedBatchId);
-                  formData.append('studentId', selectedStudentId);
-                  // Optionally add student name/class for backend
-                  const studentObj = students.find(s => s.id === selectedStudentId);
-                  if (studentObj) {
-                    formData.append('studentName', studentObj.name);
-                    formData.append('studentClass', studentObj.class);
-                  }
-                } else if (currentUser?.role === 'student' && currentUser.teacherId) {
-                  formData.append('teacherId', currentUser.teacherId);
-                  formData.append('batchId', currentUser.batchId || (currentUser.batchIds?.[0] || ''));
-                  formData.append('studentId', currentUser.id);
-                  formData.append('studentName', currentUser.name);
-                  formData.append('studentClass', currentUser.class);
-                }
-                const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
-                const uploadRes = await fetch(apiUrl + '/materials', {
-                  method: 'POST',
-                  body: formData
-                });
-                if (!uploadRes.ok) {
-                  const errJson = await uploadRes.json().catch(() => ({}));
-                  throw new Error(errJson?.error || 'Image upload failed');
-                }
-                const uploadJson = await uploadRes.json();
-                imageUrl = uploadJson.url || uploadJson.secure_url;
+              let answerUrl = '';
+              let solutionUrl = '';
+              let solutionTextValue = solutionText;
+              const formData = new FormData();
+              if (studentAnswerFile) {
+                formData.append('answerFile', studentAnswerFile);
               }
-              if (!imageUrl) throw new Error('Image upload failed');
+              if (solutionFile) {
+                formData.append('solutionFile', solutionFile);
+              }
+              if (solutionTextValue) {
+                formData.append('solutionText', solutionTextValue);
+              }
+              // Auto-add teacherId, batchId, studentId, etc.
+              if (currentUser?.role === 'teacher') {
+                formData.append('teacherId', currentUser.id);
+                formData.append('batchId', selectedBatchId);
+                formData.append('studentId', selectedStudentId);
+                const studentObj = students.find(s => s.id === selectedStudentId);
+                if (studentObj) {
+                  formData.append('studentName', studentObj.name);
+                  formData.append('studentClass', studentObj.class);
+                }
+              } else if (currentUser?.role === 'student' && currentUser.teacherId) {
+                formData.append('teacherId', currentUser.teacherId);
+                formData.append('batchId', currentUser.batchId || (currentUser.batchIds?.[0] || ''));
+                formData.append('studentId', currentUser.id);
+                formData.append('studentName', currentUser.name);
+                formData.append('studentClass', currentUser.class);
+              }
+              const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
+              const uploadRes = await fetch(apiUrl + '/materials', {
+                method: 'POST',
+                body: formData
+              });
+              if (!uploadRes.ok) {
+                const errJson = await uploadRes.json().catch(() => ({}));
+                throw new Error(errJson?.error || 'Upload failed');
+              }
+              const uploadJson = await uploadRes.json();
+              answerUrl = uploadJson.answerUrl || uploadJson.url || uploadJson.secure_url;
+              solutionUrl = uploadJson.solutionUrl || '';
+              solutionTextValue = uploadJson.solutionText || solutionTextValue;
+              if (!answerUrl) throw new Error('Answer upload failed');
               // Simulate grading logic or call API here
               setTimeout(() => {
                 setGradingResult({ total_marks_awarded: maxMarks, feedback_to_student: 'Sample feedback.' });
@@ -98,12 +108,13 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Student Answer Image</label>
-              <input type="file" accept="image/*" required onChange={e => setStudentImage(e.target.files?.[0] || null)} />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Student Answer Sheet (PDF, DOCX, Image)</label>
+              <input type="file" accept=".pdf,.doc,.docx,image/*" required onChange={e => setStudentAnswerFile(e.target.files?.[0] || null)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Ideal Solution (text)</label>
-              <textarea required className="w-full p-2 border rounded" rows={3} value={solutionKey} onChange={e => setSolutionKey(e.target.value)} />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Solution / Question Paper (PDF, DOCX, Image, or Text)</label>
+              <input type="file" accept=".pdf,.doc,.docx,image/*" onChange={e => setSolutionFile(e.target.files?.[0] || null)} />
+              <textarea className="w-full p-2 border rounded mt-2" rows={3} placeholder="Or paste solution text here" value={solutionText} onChange={e => setSolutionText(e.target.value)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Max Marks</label>

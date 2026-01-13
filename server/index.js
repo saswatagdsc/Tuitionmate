@@ -1,5 +1,5 @@
-// Export Attendance, Student, and Batch for attendanceReport.js
-export { Attendance, Student, Batch };
+// Export Attendance, Student, Batch, and sendEmail for attendanceReport.js and ai-grading.js
+export { Attendance, Student, Batch, sendEmail };
 // --- Cloudinary Setup ---
 import { v2 as cloudinary } from 'cloudinary';
 cloudinary.config({
