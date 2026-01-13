@@ -1,9 +1,7 @@
 
 import { Parser } from 'json2csv';
 import mongoose from 'mongoose';
-import { Attendance } from './index.js';
-const Student = mongoose.models.Student || mongoose.model('Student');
-const Batch = mongoose.models.Batch || mongoose.model('Batch');
+import { Attendance, Student, Batch } from './index.js';
 
 export async function generateAttendanceCSV({ studentId, batchId, from, to }) {
   const filter = {};
