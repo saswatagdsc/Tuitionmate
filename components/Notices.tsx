@@ -1,16 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useData } from '../services/store';
-import { Bell, Calendar, Plus, X, Megaphone, Users } from 'lucide-react';
+import { Bell, Calendar, Plus, X, Megaphone, Users, Trash2 } from 'lucide-react';
 
 
 export const Notices: React.FC = () => {
-  const { notices, currentUser, batches, addNotice } = useData();
+  const { notices, currentUser, batches, addNotice, deleteNotice } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetBatchId, setTargetBatchId] = useState('all');
   const [filteredNotices, setFilteredNotices] = useState(notices);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     // Refetch or filter notices for student
@@ -18,7 +19,11 @@ export const Notices: React.FC = () => {
       setFilteredNotices(
         notices.filter(n => {
           const noticeBatchId = n.batchId || 'all';
-          return noticeBatchId === 'all' || noticeBatchId === currentUser.batchId;
+          // Check if notice is for 'all' or if it matches any of the student's batches
+          if (noticeBatchId === 'all') return true;
+          // Check against batchIds array or single batchId
+          const studentBatches = currentUser.batchIds || (currentUser.batchId ? [currentUser.batchId] : []);
+          return studentBatches.includes(noticeBatchId);
         })
       );
     } else {
@@ -48,6 +53,11 @@ export const Notices: React.FC = () => {
     return batches.find(b => b.id === id)?.name || 'Unknown Batch';
   };
 
+  const handleDelete = (noticeId: string) => {
+    deleteNotice(noticeId);
+    setDeleteConfirm(null);
+  };
+
   return (
     <div className="space-y-6 pb-20">
       <div className="flex justify-between items-center">
@@ -71,7 +81,7 @@ export const Notices: React.FC = () => {
             <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${notice.batchId === 'all' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
             
             <div className="flex justify-between items-start mb-2 pl-3">
-              <div className="flex flex-col">
+              <div className="flex flex-col flex-1">
                  <h3 className="text-lg font-bold text-slate-900">{notice.title}</h3>
                  <div className="flex items-center gap-3 mt-1 text-xs font-medium text-slate-500">
                     <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(notice.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric'})}</span>
@@ -80,14 +90,47 @@ export const Notices: React.FC = () => {
                     </span>
                  </div>
               </div>
-              <div className={`p-2 rounded-full ${notice.batchId === 'all' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
-                {notice.batchId === 'all' ? <Megaphone size={18} /> : <Users size={18} />}
+              <div className="flex items-center gap-2">
+                {currentUser?.role === 'teacher' && (
+                  <button
+                    onClick={() => setDeleteConfirm(notice.id)}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    title="Delete notice"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+                <div className={`p-2 rounded-full ${notice.batchId === 'all' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                  {notice.batchId === 'all' ? <Megaphone size={18} /> : <Users size={18} />}
+                </div>
               </div>
             </div>
             
             <p className="text-slate-600 text-sm leading-relaxed pl-3 mt-3">
               {notice.content}
             </p>
+
+            {deleteConfirm === notice.id && (
+              <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+                <div className="bg-white rounded-xl p-4 shadow-lg">
+                  <p className="font-semibold text-slate-900 mb-4">Delete this notice?</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setDeleteConfirm(null)}
+                      className="px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleDelete(notice.id)}
+                      className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
 

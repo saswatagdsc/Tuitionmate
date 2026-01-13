@@ -461,6 +461,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setExams(prev => prev.filter(e => e.id !== id));
     } catch (e) { console.error(e); }
   };
+  const deleteNotice = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/notices/${id}`, { method: 'DELETE' });
+      setNotices(prev => prev.filter(n => n.id !== id));
+    } catch (e) { console.error(e); }
+  };
+  const deleteStudyMaterial = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/materials/${id}`, { method: 'DELETE' });
+      setStudyMaterials(prev => prev.filter(m => m.id !== id));
+    } catch (e) { console.error(e); }
+  };
   const addNotice = async (n: Notice) => {
     try {
       const payload = { ...n, teacherId: currentUser?.role === 'teacher' ? currentUser.id : undefined };
@@ -646,7 +658,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, logout, addStudent, updateStudent, addBatch, updateBatch, deleteBatch, markAttendance, addFee, addPayment, updateFeeStatus, 
       addExamResult, addNotice, addEnquiry, updateEnquiryStatus, addExpense, 
       addStudyMaterial, addHoliday, updateSettings, deleteFee,
-      deleteStudent, archiveStudent, deleteExamResult, sendMessage, generateMonthlyFees
+      deleteStudent, archiveStudent, deleteExamResult, sendMessage, generateMonthlyFees,
+      deleteNotice, deleteStudyMaterial
     }}>
       {children}
     </DataContext.Provider>

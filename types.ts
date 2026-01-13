@@ -161,6 +161,8 @@ export interface StudyMaterial {
   type: 'pdf' | 'video' | 'link' | 'image';
   url: string; 
   uploadDate: string;
+  batchId?: string;
+  file?: File;
 }
 
 // Smart Attendance (Holidays)
@@ -229,6 +231,8 @@ export interface DataContextType {
   deleteStudent: (id: string) => Promise<void>;
   archiveStudent: (id: string, archived: boolean) => Promise<void>;
   deleteExamResult: (id: string) => Promise<void>;
+  deleteNotice: (id: string) => Promise<void>;
+  deleteStudyMaterial: (id: string) => Promise<void>;
 
   login: (user: User) => void;
   logout: () => void;

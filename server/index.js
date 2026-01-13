@@ -963,6 +963,14 @@ app.post('/api/notices', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Delete notice
+app.delete('/api/notices/:id', async (req, res) => {
+  try {
+    await Notice.findOneAndDelete({ id: req.params.id });
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Enquiries
 app.get('/api/enquiries', async (req, res) => {
   try {
@@ -1043,10 +1051,10 @@ app.post('/api/materials', materialUpload.single('file'), async (req, res) => {
 
     let url = '';
     if (req.file) {
-      // Enforce file size limit (5MB)
-      if (req.file.size > 5 * 1024 * 1024) {
+      // Enforce file size limit (2MB)
+      if (req.file.size > 2 * 1024 * 1024) {
         fs.unlinkSync(req.file.path);
-        return res.status(400).json({ error: 'File too large. Max 5MB allowed.' });
+        return res.status(400).json({ error: 'File too large. Max 2MB allowed.' });
       }
       // Upload to Cloudinary
       try {
@@ -1094,6 +1102,30 @@ app.post('/api/materials', materialUpload.single('file'), async (req, res) => {
     }
 
     res.json(clean(material));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Delete material (from database and Cloudinary)
+app.delete('/api/materials/:id', async (req, res) => {
+  try {
+    const material = await Material.findOneAndDelete({ id: req.params.id });
+    if (!material) return res.status(404).json({ error: 'Material not found' });
+    
+    // Delete from Cloudinary if URL exists
+    if (material.url && material.url.includes('cloudinary')) {
+      try {
+        // Extract public_id from Cloudinary URL
+        const urlParts = material.url.split('/');
+        const filename = urlParts[urlParts.length - 1].split('.')[0];
+        const publicId = `materials/${filename}`;
+        await cloudinary.uploader.destroy(publicId);
+      } catch (err) {
+        console.error('Failed to delete from Cloudinary:', err);
+        // Continue anyway - material deleted from DB
+      }
+    }
+    
+    res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
