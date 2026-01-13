@@ -28,6 +28,24 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
             setGradingError(null);
             setGradingResult(null);
             try {
+              let imageUrl = '';
+              if (studentImage) {
+                const formData = new FormData();
+                formData.append('file', studentImage);
+                // You may need to add more fields if backend requires (e.g., title, teacherId)
+                const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
+                const uploadRes = await fetch(apiUrl + '/materials', {
+                  method: 'POST',
+                  body: formData
+                });
+                if (!uploadRes.ok) {
+                  const errJson = await uploadRes.json().catch(() => ({}));
+                  throw new Error(errJson?.error || 'Image upload failed');
+                }
+                const uploadJson = await uploadRes.json();
+                imageUrl = uploadJson.url || uploadJson.secure_url;
+              }
+              if (!imageUrl) throw new Error('Image upload failed');
               // Simulate grading logic or call API here
               setTimeout(() => {
                 setGradingResult({ total_marks_awarded: maxMarks, feedback_to_student: 'Sample feedback.' });
