@@ -1043,7 +1043,24 @@ app.post('/api/materials', materialUpload.single('file'), async (req, res) => {
 
     let url = '';
     if (req.file) {
-      url = `/uploads/materials/${req.file.filename}`;
+      // Enforce file size limit (5MB)
+      if (req.file.size > 5 * 1024 * 1024) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'File too large. Max 5MB allowed.' });
+      }
+      // Upload to Cloudinary
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'materials',
+          resource_type: 'auto',
+        });
+        url = uploadResult.secure_url;
+        // Delete local file after upload
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        fs.unlinkSync(req.file.path);
+        return res.status(500).json({ error: 'Cloudinary upload failed.' });
+      }
     }
 
     const material = new Material({

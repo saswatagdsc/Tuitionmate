@@ -102,27 +102,14 @@ export const Academics: React.FC = () => {
                         <h4 className="font-semibold text-slate-900 text-sm">{res.examName}</h4>
                         <p className="text-xs text-slate-500 mt-0.5">{res.subject}</p>
                         {res.marksheetUrl && (
-                          (() => {
-                            // If marksheetUrl is a file, use secure download endpoint for students
-                            let downloadUrl = res.marksheetUrl;
-                            if (
-                              res.marksheetUrl.startsWith('/uploads/marksheets/') &&
-                              currentUser?.role === 'student'
-                            ) {
-                              const filename = res.marksheetUrl.split('/').pop();
-                              downloadUrl = `/api/marksheets/${filename}/download?studentId=${currentUser.studentId}&examId=${res.id}`;
-                            }
-                            return (
-                              <a
-                                href={downloadUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 underline mt-1 block"
-                              >
-                                Download Marksheet
-                              </a>
-                            );
-                          })()
+                          <a
+                            href={res.marksheetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 underline mt-1 block"
+                          >
+                            Download Marksheet
+                          </a>
                         )}
                         {res.remarks && (
                           <div className="text-xs text-slate-500 mt-1">Remarks: {res.remarks}</div>
