@@ -5,55 +5,44 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
-import nodemailer from 'nodemailer';
+import fetch from 'node-fetch';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '../.env');
 dotenv.config({ path: envPath });
 
-// --- Email Transporter ---
-let transporter;
-const setupTransporter = async () => {
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-      const t = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT) || 587,
-          secure: Number(process.env.SMTP_PORT) === 465, 
-          auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
-          },
-      });
-
-      try {
-        await t.verify();
-        transporter = t;
-        console.log('✅ Email system active (Connected to SMTP).');
-      } catch (e) {
-        console.warn('⚠️ SMTP Authentication Failed. Email features will be SIMULATED.');
-        console.warn(`   Error: ${e.message}`);
-        transporter = null;
-      }
-  } else {
-      console.log('ℹ️ SMTP credentials missing. Email features will be SIMULATED.');
-  }
-};
-setupTransporter();
-
-// Helper to send email
+// --- Email via Resend API ---
+// Set RESEND_API_KEY and RESEND_FROM_EMAIL in your environment
 const sendEmail = async (to, subject, text) => {
-  if (transporter) {
-    try {
-      await transporter.sendMail({ from: process.env.SMTP_USER, to, subject, text });
-      console.log(`Email sent to ${to}: ${subject}`);
-      return true;
-    } catch (e) {
-      console.error('Email send failed:', e);
-      return false;
-    }
-  } else {
+  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
     console.log(`[SIMULATED EMAIL] To: ${to} | Subject: ${subject} | Body: ${text}`);
     return true;
+  }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM_EMAIL,
+        to,
+        subject,
+        text
+      })
+    });
+    if (res.ok) {
+      console.log(`Email sent to ${to}: ${subject}`);
+      return true;
+    } else {
+      const err = await res.text();
+      console.error('Resend API error:', err);
+      return false;
+    }
+  } catch (e) {
+    console.error('Email send failed:', e);
+    return false;
   }
 };
 
