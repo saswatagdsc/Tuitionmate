@@ -42,7 +42,7 @@ export interface AttendanceRecord {
   batchId: string;
   teacherId?: string;
   date: string;
-  records: { studentId: string; status: 'present' | 'absent' | 'late' }[];
+  records: { studentId: string; status: 'present' | 'absent' | 'late'; timestamp?: string }[];
 }
 
 export interface Payment {

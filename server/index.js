@@ -460,31 +460,38 @@ app.get('/api/admin/dashboard', async (req, res) => {
     const totalBatches = await Batch.countDocuments();
     
     // 2. Teachers List
-    const teachersRaw = await AuthUser.find({ role: 'teacher' });
-    const teachers = await Promise.all(teachersRaw.map(async (t) => {
-       const sCount = await Student.countDocuments({ teacherId: t.id });
-       const bCount = await Batch.countDocuments({ teacherId: t.id }); 
-       return {
-         id: t.id,
-         name: t.name || 'Unknown',
-         email: t.email,
-         isFrozen: t.isFrozen || false, // Include status
-         studentCount: sCount,
-         batchCount: bCount, 
-         joinedDate: t._id.getTimestamp(), // Mongo ObjectId has timestamp
-       };
-    }));
-
-    res.json({
-      stats: {
-        totalTeachers,
-        totalStudents,
-        totalBatches,
-        activeSubscriptions: totalTeachers, // For now assuming all active
-        systemHealth: 'Healthy'
-      },
-      teachers
-    });
+      let teachersRaw, studentsRaw;
+      if (req.query.role === 'superadmin') {
+        teachersRaw = await AuthUser.find({ role: 'teacher' });
+        studentsRaw = await Student.find();
+      } else {
+        teachersRaw = await AuthUser.find({ role: 'teacher', isFrozen: false });
+        studentsRaw = await Student.find({ isFrozen: { $ne: true }, archived: { $ne: true } });
+      }
+      const teachers = await Promise.all(teachersRaw.map(async (t) => {
+         const sCount = await Student.countDocuments({ teacherId: t.id });
+         const bCount = await Batch.countDocuments({ teacherId: t.id }); 
+         return {
+           id: t.id,
+           name: t.name || 'Unknown',
+           email: t.email,
+           isFrozen: t.isFrozen || false, // Include status
+           studentCount: sCount,
+           batchCount: bCount, 
+           joinedDate: t._id.getTimestamp(), // Mongo ObjectId has timestamp
+         };
+      }));
+      res.json({
+        stats: {
+          totalTeachers,
+          totalStudents,
+          totalBatches,
+          activeSubscriptions: totalTeachers, // For now assuming all active
+          systemHealth: 'Healthy'
+        },
+        teachers,
+        students: studentsRaw
+      });
 
   } catch (e) {
     console.error("Admin Dashboard Error:", e);

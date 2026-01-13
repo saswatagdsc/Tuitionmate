@@ -44,9 +44,11 @@ export const Attendance: React.FC = () => {
   };
 
   const handleSave = async () => {
+    const now = new Date().toISOString();
     const records = batchStudents.map(s => ({
       studentId: s.id,
-      status: markedStudents.has(s.id) ? 'present' : 'absent'
+      status: markedStudents.has(s.id) ? 'present' : 'absent',
+      timestamp: now
     }));
 
     await markAttendance({
@@ -91,7 +93,8 @@ export const Attendance: React.FC = () => {
             'Class': student.class,
             'Batch': batch?.name || 'Unknown',
             'Status': r.status,
-            'Parent Contact': student.phone || '-'
+            'Parent Contact': student.phone || '-',
+            'Timestamp': r.timestamp || ''
           });
         }
       });
