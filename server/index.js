@@ -827,23 +827,12 @@ app.get('/api/exams', async (req, res) => {
     res.json(cleanList(exams));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// --- Multer for file upload ---
+// --- Multer for file upload (Memory storage for Vercel compatibility) ---
 import multer from 'multer';
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../uploads/marksheets'));
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit for marksheets
 });
-const upload = multer({ storage });
-
-// Ensure upload dir exists
-import fs from 'fs';
-const uploadDir = path.join(__dirname, '../uploads/marksheets');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 // Result declaration endpoint
 app.post('/api/exams', upload.single('marksheet'), async (req, res) => {
@@ -858,23 +847,36 @@ app.post('/api/exams', upload.single('marksheet'), async (req, res) => {
 
     let marksheetUrl = '';
     if (req.file) {
-      // Enforce file size limit (5MB)
+      // Enforce file size limit (5MB) - multer already enforces this, but double check
       if (req.file.size > 5 * 1024 * 1024) {
-        fs.unlinkSync(req.file.path);
         return res.status(400).json({ error: 'File too large. Max 5MB allowed.' });
       }
-      // Upload to Cloudinary
+      
+      // Upload to Cloudinary directly from memory buffer
       try {
-        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'marksheets',
-          resource_type: 'auto',
+        console.log('Uploading marksheet to Cloudinary from memory buffer:', req.file.originalname);
+        
+        // Use stream upload for buffer
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+              folder: 'marksheets',
+              resource_type: 'auto',
+              public_id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(req.file.buffer);
         });
+        
         marksheetUrl = uploadResult.secure_url;
-        // Delete local file after upload
-        fs.unlinkSync(req.file.path);
+        console.log('Marksheet upload successful:', marksheetUrl);
       } catch (err) {
-        fs.unlinkSync(req.file.path);
-        return res.status(500).json({ error: 'Cloudinary upload failed.' });
+        console.error('Cloudinary upload error:', err);
+        return res.status(500).json({ error: 'Cloudinary upload failed: ' + err.message });
       }
     }
 
@@ -1025,49 +1027,54 @@ app.get('/api/materials', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- Multer for material upload ---
-// Reuse the already imported multer above. Only define new storage and upload instance.
-const materialStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../uploads/materials'));
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
+// --- Multer for material upload (Memory storage for Vercel compatibility) ---
+const materialUpload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit
 });
-const materialUpload = multer({ storage: materialStorage });
-
-// Ensure upload dir exists
-const materialUploadDir = path.join(__dirname, '../uploads/materials');
-if (!fs.existsSync(materialUploadDir)) fs.mkdirSync(materialUploadDir, { recursive: true });
 
 // Upload material with batch/class selection
 app.post('/api/materials', materialUpload.single('file'), async (req, res) => {
   try {
     const { teacherId, title, subject, class: className, batchId, type } = req.body;
+    
+    console.log('Materials upload received:', { teacherId, title, subject, className, batchId, type, hasFile: !!req.file });
+    
     if (!teacherId) return res.status(400).json({ error: 'teacherId is required' });
     if (!batchId && !className) return res.status(400).json({ error: 'batchId or class is required' });
 
     let url = '';
     if (req.file) {
-      // Enforce file size limit (2MB)
+      // Enforce file size limit (2MB) - multer already enforces this, but double check
       if (req.file.size > 2 * 1024 * 1024) {
-        fs.unlinkSync(req.file.path);
         return res.status(400).json({ error: 'File too large. Max 2MB allowed.' });
       }
-      // Upload to Cloudinary
+      
+      // Upload to Cloudinary directly from memory buffer
       try {
-        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'materials',
-          resource_type: 'auto',
+        console.log('Uploading to Cloudinary from memory buffer:', req.file.originalname);
+        
+        // Use stream upload for buffer
+        const uploadResult = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+              folder: 'materials',
+              resource_type: 'auto',
+              public_id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(req.file.buffer);
         });
+        
         url = uploadResult.secure_url;
-        // Delete local file after upload
-        fs.unlinkSync(req.file.path);
+        console.log('Cloudinary upload successful:', url);
       } catch (err) {
-        fs.unlinkSync(req.file.path);
-        return res.status(500).json({ error: 'Cloudinary upload failed.' });
+        console.error('Cloudinary upload error:', err);
+        return res.status(500).json({ error: 'Cloudinary upload failed: ' + err.message });
       }
     }
 
@@ -1102,7 +1109,10 @@ app.post('/api/materials', materialUpload.single('file'), async (req, res) => {
     }
 
     res.json(clean(material));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { 
+    console.error('Materials endpoint error:', e);
+    res.status(500).json({ error: e.message }); 
+  }
 });
 
 // Delete material (from database and Cloudinary)
