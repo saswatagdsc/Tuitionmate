@@ -24,6 +24,7 @@
     "lucide-react": "^0.562.0",
     "mongoose": "^9.1.2",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

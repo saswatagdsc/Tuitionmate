@@ -8,6 +8,7 @@ declare global {
   }
 }
 import React, { useState } from 'react';
+import { gradeMathTheory } from '../services/gemini';
 import { useData } from '../services/store';
 import { Batch } from '../types';
 import { Users, Clock, BookOpen, Plus, X, Edit2, Trash2, Calendar } from 'lucide-react';
@@ -26,6 +27,14 @@ const SUBJECT_PRESETS = [
 
 export const Batches: React.FC = () => {
   const { batches, addBatch, updateBatch, deleteBatch, students } = useData();
+  // AI Grading State
+  const [gradingBatchId, setGradingBatchId] = useState<string | null>(null);
+  const [studentImage, setStudentImage] = useState<File | null>(null);
+  const [solutionKey, setSolutionKey] = useState<string>('');
+  const [maxMarks, setMaxMarks] = useState<number>(10);
+  const [gradingResult, setGradingResult] = useState<any>(null);
+  const [gradingLoading, setGradingLoading] = useState(false);
+  const [gradingError, setGradingError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -216,6 +225,81 @@ export const Batches: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20">
+      {/* AI Grading Modal */}
+      {gradingBatchId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] shadow-xl animate-in fade-in zoom-in duration-200 flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 flex-shrink-0">
+              <h2 className="text-xl font-bold text-slate-900">AI Grade Theory Paper</h2>
+              <button onClick={() => {
+                setGradingBatchId(null);
+                setStudentImage(null);
+                setSolutionKey('');
+                setGradingResult(null);
+                setGradingError(null);
+              }} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <form onSubmit={async e => {
+                e.preventDefault();
+                setGradingLoading(true);
+                setGradingError(null);
+                setGradingResult(null);
+                try {
+                  // Upload image to Cloudinary or get base64
+                  let imageUrl = '';
+                  if (studentImage) {
+                    // Use a simple upload to server/materials endpoint (reuse existing infra)
+                    const formData = new FormData();
+                    formData.append('file', studentImage);
+                    const uploadRes = await fetch((import.meta as any).env?.VITE_API_URL + '/materials', {
+                      method: 'POST',
+                      body: formData
+                    });
+                    const uploadJson = await uploadRes.json();
+                    imageUrl = uploadJson.url || uploadJson.secure_url;
+                  }
+                  if (!imageUrl) throw new Error('Image upload failed');
+                  const result = await gradeMathTheory(imageUrl, solutionKey, maxMarks);
+                  setGradingResult(result);
+                } catch (err: any) {
+                  setGradingError(err.message || 'Error grading');
+                } finally {
+                  setGradingLoading(false);
+                }
+              }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Student Answer Image</label>
+                  <input type="file" accept="image/*" required onChange={e => setStudentImage(e.target.files?.[0] || null)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Ideal Solution (text)</label>
+                  <textarea required className="w-full p-2 border rounded" rows={3} value={solutionKey} onChange={e => setSolutionKey(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Max Marks</label>
+                  <input type="number" min={1} max={100} value={maxMarks} onChange={e => setMaxMarks(Number(e.target.value))} className="w-24 p-2 border rounded" />
+                </div>
+                <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 transition-colors" disabled={gradingLoading}>
+                  {gradingLoading ? 'Grading...' : 'Grade with AI'}
+                </button>
+              </form>
+              {gradingError && <div className="mt-4 text-red-600">{gradingError}</div>}
+              {gradingResult && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded">
+                  <div><b>Marks Awarded:</b> {gradingResult.total_marks_awarded}</div>
+                  <div><b>Error Step:</b> {gradingResult.error_step_description}</div>
+                  <div><b>Weakness Tag:</b> {gradingResult.weakness_tag}</div>
+                  <div><b>Feedback:</b> {gradingResult.feedback_to_student}</div>
+                  <div><b>Remedial Suggestion:</b> {gradingResult.remedial_topic_suggestion}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Batches & Classes</h1>
@@ -276,6 +360,12 @@ export const Batches: React.FC = () => {
                   className="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-600 px-3 py-2 rounded-lg font-medium hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Trash2 size={16} /> {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+                <button
+                  onClick={() => setGradingBatchId(batch.id)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-yellow-50 text-yellow-700 px-3 py-2 rounded-lg font-medium hover:bg-yellow-100 transition-colors"
+                >
+                  <BookOpen size={16} /> AI Grade Theory
                 </button>
                   <button
                     onClick={() => {

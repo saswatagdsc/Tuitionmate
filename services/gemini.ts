@@ -1,3 +1,24 @@
+// Call backend for AI grading of theory-based math
+export const gradeMathTheory = async (
+  studentImageUrl: string,
+  idealSolution: string,
+  maxMarks: number
+): Promise<{
+  total_marks_awarded: number;
+  error_step_description: string;
+  weakness_tag: string;
+  feedback_to_student: string;
+  remedial_topic_suggestion: string;
+}> => {
+  const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
+  const res = await fetch(`${apiUrl}/ai/grade-theory`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ studentImageUrl, idealSolution, maxMarks })
+  });
+  if (!res.ok) throw new Error('AI grading failed');
+  return await res.json();
+};
 // AI features must be called via a secure backend.
 // For privacy and security, we avoid exposing API keys in the client.
 // If a backend is not configured, we return local stub responses.

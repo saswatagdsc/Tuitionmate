@@ -17,10 +17,38 @@ import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import fetch from 'node-fetch';
 import { generateAttendanceCSV } from './attendanceReport.js';
+import aiGradingRouter from './ai-grading.js';
+import parentReportRouter, { sendParentReportById } from './parent-report.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '../.env');
 dotenv.config({ path: envPath });
+
+
+const app = express();
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Mount AI Grading API
+app.use('/api/ai', aiGradingRouter);
+// Mount Parent Report API
+app.use('/api/reports', parentReportRouter);
+
+// --- Weekly Parent Report Scheduler (runs every Monday 7am) ---
+import cron from 'node-cron';
+cron.schedule('0 7 * * 1', async () => {
+  // Find all students with parent email
+  const Student = mongoose.models.Student || mongoose.model('Student');
+  const students = await Student.find({ email: { $exists: true, $ne: '' } });
+  for (const student of students) {
+    try {
+      await sendParentReportById(student.id);
+      console.log(`[Weekly Report] Sent to parent of ${student.name} (${student.email})`);
+    } catch (e) {
+      console.error('Weekly parent report error:', e.message);
+    }
+  }
+});
 
 // --- Email via Resend API ---
 // Set RESEND_API_KEY and RESEND_FROM_EMAIL in your environment
@@ -57,9 +85,7 @@ const sendEmail = async (to, subject, text) => {
   }
 };
 
-const app = express();
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 
 // Track IP for login attempts (in-memory)
 const ipBlockList = new Map(); // ip -> { count, lockUntil }
