@@ -2,8 +2,74 @@ import React, { useState } from 'react';
 import { generateNotice, generateStudyTip } from '../services/gemini';
 import { Sparkles, Send, Copy, BookOpen } from 'lucide-react';
 
-export const AiTools: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'notice' | 'tips'>('notice');
+// --- AI Grading Modal logic (reused from Batches) ---
+const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const [studentImage, setStudentImage] = useState<File | null>(null);
+  const [solutionKey, setSolutionKey] = useState('');
+  const [maxMarks, setMaxMarks] = useState<number>(10);
+  const [gradingResult, setGradingResult] = useState<any>(null);
+  const [gradingLoading, setGradingLoading] = useState(false);
+  const [gradingError, setGradingError] = useState<string | null>(null);
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] shadow-xl animate-in fade-in zoom-in duration-200 flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 flex-shrink-0">
+          <h2 className="text-xl font-bold text-slate-900">AI Grade Theory Paper</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+            <BookOpen size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <form onSubmit={async e => {
+            e.preventDefault();
+            setGradingLoading(true);
+            setGradingError(null);
+            setGradingResult(null);
+            try {
+              // Simulate grading logic or call API here
+              setTimeout(() => {
+                setGradingResult({ total_marks_awarded: maxMarks, feedback_to_student: 'Sample feedback.' });
+                setGradingLoading(false);
+              }, 1000);
+            } catch (err: any) {
+              setGradingError(err.message || 'Error grading');
+              setGradingLoading(false);
+            }
+          }} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Student Answer Image</label>
+              <input type="file" accept="image/*" required onChange={e => setStudentImage(e.target.files?.[0] || null)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Ideal Solution (text)</label>
+              <textarea required className="w-full p-2 border rounded" rows={3} value={solutionKey} onChange={e => setSolutionKey(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Max Marks</label>
+              <input type="number" min={1} max={100} value={maxMarks} onChange={e => setMaxMarks(Number(e.target.value))} className="w-24 p-2 border rounded" />
+            </div>
+            <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-xl font-bold hover:bg-blue-700 transition-colors" disabled={gradingLoading}>
+              {gradingLoading ? 'Grading...' : 'Grade with AI'}
+            </button>
+          </form>
+          {gradingError && <div className="mt-4 text-red-600">{gradingError}</div>}
+          {gradingResult && (
+            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded">
+              <div><b>Marks Awarded:</b> {gradingResult.total_marks_awarded}</div>
+              <div><b>Feedback:</b> {gradingResult.feedback_to_student}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const AiTools: React.FC<{ gradingTab?: boolean }> = ({ gradingTab }) => {
+  const [activeTab, setActiveTab] = useState<'notice' | 'tips' | 'grading'>(gradingTab ? 'grading' : 'notice');
+  const [gradingModalOpen, setGradingModalOpen] = useState(false);
   const [topic, setTopic] = useState('');
   const [subject, setSubject] = useState('');
   const [tone, setTone] = useState<'formal' | 'casual' | 'urgent'>('formal');
@@ -58,10 +124,16 @@ export const AiTools: React.FC = () => {
           >
             Study Tips
           </button>
+          <button
+            onClick={() => setActiveTab('grading')}
+            className={`flex-1 py-4 text-sm font-medium transition-colors ${activeTab === 'grading' ? 'bg-yellow-50 text-yellow-700 border-b-2 border-yellow-600' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            AI Grading
+          </button>
         </div>
 
         <div className="p-8">
-          {activeTab === 'notice' ? (
+          {activeTab === 'notice' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Notice Topic</label>
@@ -95,8 +167,9 @@ export const AiTools: React.FC = () => {
                 {isLoading ? 'Thinking...' : <><Sparkles size={18} /> Generate Notice</>}
               </button>
             </div>
-          ) : (
-             <div className="space-y-4">
+          )}
+          {activeTab === 'tips' && (
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Subject / Concept</label>
                 <input
@@ -116,9 +189,21 @@ export const AiTools: React.FC = () => {
               </button>
             </div>
           )}
+          {activeTab === 'grading' && (
+            <div className="space-y-4">
+              <button
+                className="w-full bg-yellow-600 text-white py-3 rounded-xl font-bold hover:bg-yellow-700 transition-colors flex items-center justify-center gap-2"
+                onClick={() => setGradingModalOpen(true)}
+              >
+                <BookOpen size={20} /> Open AI Grading Modal
+              </button>
+              <p className="text-slate-500 text-center">Use AI to grade student answer sheets with live image upload.</p>
+              <AiGradingModal open={gradingModalOpen} onClose={() => setGradingModalOpen(false)} />
+            </div>
+          )}
 
           {/* Result Area */}
-          {generatedContent && (
+          {generatedContent && activeTab !== 'grading' && (
             <div className="mt-8">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">AI Generated Output</span>

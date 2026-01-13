@@ -41,6 +41,7 @@ export const Menu: React.FC<MenuProps> = ({ onClose, onNavigate, currentView }) 
     { id: 'chat', label: 'Chat', icon: <MessageCircle size={32} />, color: 'bg-cyan-50 text-cyan-600' },
     { id: 'schedule', label: 'Schedule', icon: <CalendarDays size={32} />, color: 'bg-pink-50 text-pink-600' },
     { id: 'ai-tools', label: 'AI Tools', icon: <Sparkles size={32} />, color: 'bg-violet-50 text-violet-600' },
+    { id: 'ai-grading', label: 'AI Grading', icon: <BookOpen size={32} />, color: 'bg-yellow-50 text-yellow-700' },
     { id: 'settings', label: 'Settings', icon: <Settings size={32} />, color: 'bg-gray-50 text-gray-600' },
   ];
 

@@ -20,7 +20,7 @@ import { StudyMaterials } from './components/StudyMaterials';
 import { Settings } from './components/Settings';
 import { SuperAdminDashboard } from './components/SuperAdmin';
 
-export type View = 'dashboard' | 'students' | 'batches' | 'attendance' | 'fees' | 'academics' | 'ai-tools' | 'chat' | 'notices' | 'schedule' | 'crm' | 'expenses' | 'materials' | 'settings';
+export type View = 'dashboard' | 'students' | 'batches' | 'attendance' | 'fees' | 'academics' | 'ai-tools' | 'ai-grading' | 'chat' | 'notices' | 'schedule' | 'crm' | 'expenses' | 'materials' | 'settings';
 
 const MainApp: React.FC = () => {
   const { currentUser } = useData();
@@ -50,6 +50,8 @@ const MainApp: React.FC = () => {
         return <Academics />;
       case 'ai-tools':
         return <AiTools />;
+      case 'ai-grading':
+        return <AiTools gradingTab />;
       case 'chat':
         return <Chat />;
       case 'notices':
