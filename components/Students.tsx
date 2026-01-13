@@ -757,6 +757,60 @@ export const Students: React.FC = () => {
                   <div className="flex items-center gap-1 text-xs text-blue-600 font-medium px-2 py-1 rounded hover:bg-blue-50">
                     View Profile
                   </div>
+                    <button
+                      className="ml-2 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded hover:bg-blue-100 border border-slate-200"
+                      onClick={e => {
+                        e.stopPropagation();
+                        const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?studentId=${student.id}`;
+                        fetch(url, { headers: { 'Accept': 'text/csv' } })
+                          .then(res => res.blob())
+                          .then(blob => {
+                            const link = document.createElement('a');
+                            link.href = window.URL.createObjectURL(blob);
+                            link.download = `attendance_${student.name.replace(/\s+/g, '_')}.csv`;
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                          });
+                      }}
+                    >
+                      Download Attendance
+                    </button>
+
+                      {/* Custom Date Range Download */}
+                      <details className="ml-2 inline-block">
+                        <summary className="text-xs text-blue-600 cursor-pointer select-none">Custom Range</summary>
+                        <div className="flex flex-col gap-1 bg-white border border-slate-200 rounded p-2 mt-1 z-10">
+                          <label className="text-xs text-slate-500">From:
+                            <input type="date" className="ml-1 border rounded px-1 py-0.5 text-xs" id={`from_${student.id}`} />
+                          </label>
+                          <label className="text-xs text-slate-500">To:
+                            <input type="date" className="ml-1 border rounded px-1 py-0.5 text-xs" id={`to_${student.id}`} />
+                          </label>
+                          <button
+                            className="mt-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                            onClick={ev => {
+                              ev.stopPropagation();
+                              const from = (document.getElementById(`from_${student.id}`) as HTMLInputElement)?.value;
+                              const to = (document.getElementById(`to_${student.id}`) as HTMLInputElement)?.value;
+                              if (!from || !to) { alert('Select both dates'); return; }
+                              const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?studentId=${student.id}&from=${from}&to=${to}`;
+                              fetch(url, { headers: { 'Accept': 'text/csv' } })
+                                .then(res => res.blob())
+                                .then(blob => {
+                                  const link = document.createElement('a');
+                                  link.href = window.URL.createObjectURL(blob);
+                                  link.download = `attendance_${student.name.replace(/\s+/g, '_')}_${from}_to_${to}.csv`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  link.remove();
+                                });
+                            }}
+                          >
+                            Download
+                          </button>
+                        </div>
+                      </details>
                 </div>
               </div>
             </div>

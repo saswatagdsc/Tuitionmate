@@ -1,3 +1,12 @@
+// Fix for TypeScript: declare import.meta.env
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_API_URL?: string;
+      [key: string]: any;
+    };
+  }
+}
 import React, { useState } from 'react';
 import { useData } from '../services/store';
 import { Batch } from '../types';
@@ -268,6 +277,57 @@ export const Batches: React.FC = () => {
                 >
                   <Trash2 size={16} /> {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>
+                  <button
+                    onClick={() => {
+                      const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?batchId=${batch.id}`;
+                      fetch(url, { headers: { 'Accept': 'text/csv' } })
+                        .then(res => res.blob())
+                        .then(blob => {
+                          const link = document.createElement('a');
+                          link.href = window.URL.createObjectURL(blob);
+                          link.download = `attendance_${batch.name.replace(/\s+/g, '_')}.csv`;
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                        });
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-50 text-green-700 px-3 py-2 rounded-lg font-medium hover:bg-green-100 transition-colors"
+                  >
+                    <Calendar size={16} /> Download Attendance
+                  </button>
+                  <details className="flex-1 inline-block ml-2">
+                    <summary className="text-xs text-green-700 cursor-pointer select-none">Custom Range</summary>
+                    <div className="flex flex-col gap-1 bg-white border border-slate-200 rounded p-2 mt-1 z-10">
+                      <label className="text-xs text-slate-500">From:
+                        <input type="date" className="ml-1 border rounded px-1 py-0.5 text-xs" id={`from_batch_${batch.id}`} />
+                      </label>
+                      <label className="text-xs text-slate-500">To:
+                        <input type="date" className="ml-1 border rounded px-1 py-0.5 text-xs" id={`to_batch_${batch.id}`} />
+                      </label>
+                      <button
+                        className="mt-1 text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                        onClick={ev => {
+                          ev.stopPropagation();
+                          const from = (document.getElementById(`from_batch_${batch.id}`) as HTMLInputElement)?.value;
+                          const to = (document.getElementById(`to_batch_${batch.id}`) as HTMLInputElement)?.value;
+                          if (!from || !to) { alert('Select both dates'); return; }
+                          const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?batchId=${batch.id}&from=${from}&to=${to}`;
+                          fetch(url, { headers: { 'Accept': 'text/csv' } })
+                            .then(res => res.blob())
+                            .then(blob => {
+                              const link = document.createElement('a');
+                              link.href = window.URL.createObjectURL(blob);
+                              link.download = `attendance_${batch.name.replace(/\s+/g, '_')}_${from}_to_${to}.csv`;
+                              document.body.appendChild(link);
+                              link.click();
+                              link.remove();
+                            });
+                        }}
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </details>
               </div>
             </div>
           </div>

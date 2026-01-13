@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import fetch from 'node-fetch';
+import { generateAttendanceCSV } from './attendanceReport.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const envPath = path.resolve(__dirname, '../.env');
@@ -621,6 +622,31 @@ app.post('/api/attendance', async (req, res) => {
     await record.save();
     res.json(clean(record));
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Attendance Report Download (CSV)
+app.get('/api/attendance/report', async (req, res) => {
+  try {
+    const { studentId, batchId, from, to } = req.query;
+    if (!studentId && !batchId) return res.status(400).json({ error: 'studentId or batchId required' });
+    // Default: last 1 year
+    let fromDate = from;
+    let toDate = to;
+    if (!fromDate) {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 1);
+      fromDate = d.toISOString().split('T')[0];
+    }
+    if (!toDate) {
+      toDate = new Date().toISOString().split('T')[0];
+    }
+    const csv = await generateAttendanceCSV({ studentId, batchId, from: fromDate, to: toDate });
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="attendance_report.csv"');
+    res.send(csv);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Fees
