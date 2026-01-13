@@ -160,37 +160,29 @@ export const StudyMaterials: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredMaterials.map((item) => {
-          // For files, use secure download endpoint
-          const isFile = item.type === 'pdf' || item.type === 'image';
-          let viewUrl = item.url;
-          if (isFile && currentUser?.role === 'student') {
-            viewUrl = `/api/materials/${item.id}/download?studentId=${currentUser.studentId}`;
-          }
-          return (
-            <div key={item.id} className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-2 bg-gray-50 rounded-lg">
-                  {getIcon(item.type)}
-                </div>
-                <span className="text-xs text-gray-500">{item.uploadDate}</span>
+        {filteredMaterials.map((item) => (
+          <div key={item.id} className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                {getIcon(item.type)}
               </div>
-              <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-                <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-xs">{item.subject}</span>
-                <span className="text-xs">• Class {item.class}</span>
-              </div>
-              <a 
-                href={viewUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="block w-full text-center py-2 border border-gray-200 rounded text-sm font-medium hover:bg-gray-50 text-gray-700"
-              >
-                View Material
-              </a>
+              <span className="text-xs text-gray-500">{item.uploadDate}</span>
             </div>
-          );
-        })}
+            <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
+            <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-xs">{item.subject}</span>
+              <span className="text-xs">• Class {item.class}</span>
+            </div>
+            <a 
+              href={item.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="block w-full text-center py-2 border border-gray-200 rounded text-sm font-medium hover:bg-gray-50 text-gray-700"
+            >
+              View Material
+            </a>
+          </div>
+        ))}
       </div>
     </div>
   );
