@@ -79,6 +79,8 @@ model ExamResult {
   marksObtained Int
   totalMarks    Int
   subject       String
+  remarks       String?
+  marksheetUrl  String?
 }
 
 model ChatMessage {

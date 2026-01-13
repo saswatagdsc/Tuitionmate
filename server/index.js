@@ -190,7 +190,9 @@ const examSchema = new mongoose.Schema({
   marks: Number,
   totalMarks: Number,
   examName: String,
-  date: String
+  date: String,
+  remarks: String,
+  marksheetUrl: String
 });
 
 const messageSchema = new mongoose.Schema({
@@ -817,11 +819,61 @@ app.get('/api/exams', async (req, res) => {
     res.json(cleanList(exams));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/exams', async (req, res) => {
+// --- Multer for file upload ---
+import multer from 'multer';
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../uploads/marksheets'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage });
+
+// Ensure upload dir exists
+import fs from 'fs';
+const uploadDir = path.join(__dirname, '../uploads/marksheets');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+// Result declaration endpoint
+app.post('/api/exams', upload.single('marksheet'), async (req, res) => {
   try {
-    if (!req.body.teacherId) return res.status(400).json({ error: 'teacherId is required' });
-    const exam = new Exam(req.body);
+    const { teacherId, studentId, subject, marks, totalMarks, examName, date, remarks } = req.body;
+    if (!teacherId) return res.status(400).json({ error: 'teacherId is required' });
+    if (!studentId) return res.status(400).json({ error: 'studentId is required' });
+
+    // Find student for email
+    const student = await Student.findOne({ id: studentId });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    let marksheetUrl = '';
+    if (req.file) {
+      marksheetUrl = `/uploads/marksheets/${req.file.filename}`;
+    }
+
+    const exam = new Exam({
+      id: `exam_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
+      teacherId,
+      studentId,
+      subject,
+      marks,
+      totalMarks,
+      examName,
+      date,
+      remarks,
+      marksheetUrl
+    });
     await exam.save();
+
+    // Send email to student
+    let emailText = `Dear ${student.name},\n\nYour result for ${examName} (${subject}) has been declared.\nMarks: ${marks}/${totalMarks}`;
+    if (remarks) emailText += `\nRemarks: ${remarks}`;
+    if (marksheetUrl) emailText += `\nYou can download your marksheet here: ${marksheetUrl}`;
+    emailText += '\n\nRegards,\nTutorMate';
+    await sendEmail(student.email, `Result Declared: ${examName}`, emailText);
+
     res.json(clean(exam));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
