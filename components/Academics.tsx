@@ -141,8 +141,11 @@ export const Academics: React.FC = () => {
     };
   });
 
-  // Recent results list
-  const recentResults = [...exams].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+
+  // State for toggling between recent and all results
+  const [showAll, setShowAll] = useState(false);
+  const sortedResults = [...exams].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const resultsToShow = showAll ? sortedResults : sortedResults.slice(0, 5);
 
   return (
     <div className="space-y-6 pb-20">
@@ -181,12 +184,16 @@ export const Academics: React.FC = () => {
       {/* Recent Results List */}
       <div>
         <div className="flex justify-between items-center mb-3 px-1">
-           <h3 className="text-lg font-bold text-slate-900">Recent Results</h3>
-           <button className="text-xs text-blue-600 font-medium">View All</button>
+           <h3 className="text-lg font-bold text-slate-900">{showAll ? 'All Results' : 'Recent Results'}</h3>
+           <button
+             className="text-xs text-blue-600 font-medium"
+             onClick={() => setShowAll(v => !v)}
+           >
+             {showAll ? 'Show Recent' : 'View All'}
+           </button>
         </div>
-        
         <div className="space-y-3">
-          {recentResults.map(res => {
+          {resultsToShow.map(res => {
               const student = students.find(s => s.id === res.studentId);
               const percentage = Math.round((res.marks / res.totalMarks) * 100);
               let colorClass = 'text-green-600 bg-green-50';
@@ -199,15 +206,12 @@ export const Academics: React.FC = () => {
                         <h4 className="font-semibold text-slate-900 text-sm">{student?.name}</h4>
                         <p className="text-xs text-slate-500 mt-0.5">{res.examName} • {res.subject}</p>
                       </div>
-                      
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <div className={`text-sm font-bold px-2 py-1 rounded ${colorClass}`}>
-                            {percentage}%
-                          </div>
+                          <div className={`text-sm font-bold px-2 py-1 rounded ${colorClass}`}>{percentage}%</div>
                           <p className="text-[10px] text-slate-400 mt-1">{res.marks}/{res.totalMarks}</p>
                         </div>
-                        <button 
+                        <button
                           onClick={() => {
                             if (window.confirm('Delete this exam result?')) deleteExamResult(res.id);
                           }}
