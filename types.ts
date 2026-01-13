@@ -84,6 +84,8 @@ export interface ExamResult {
   totalMarks: number;
   examName: string;
   date: string;
+  remarks?: string;
+  marksheetUrl?: string;
 }
 
 export interface Notice {

@@ -13,12 +13,29 @@ export const Academics: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     marks: 0,
     totalMarks: 100,
-    subject: ''
+    subject: '',
+    remarks: ''
   });
+  const [marksheetFile, setMarksheetFile] = useState<File | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newResult.studentId || !newResult.examName || newResult.marks === undefined || !newResult.subject) return;
+
+    let marksheetUrl = undefined;
+    if (marksheetFile) {
+      const formData = new FormData();
+      formData.append('file', marksheetFile);
+      // Optionally add more fields if backend expects
+      const uploadRes = await fetch('/api/upload/marksheet', {
+        method: 'POST',
+        body: formData
+      });
+      if (uploadRes.ok) {
+        const data = await uploadRes.json();
+        marksheetUrl = data.url;
+      }
+    }
 
     addExamResult({
       id: `e${Date.now()}`,
@@ -27,7 +44,9 @@ export const Academics: React.FC = () => {
       date: newResult.date!,
       marks: Number(newResult.marks),
       totalMarks: Number(newResult.totalMarks),
-      subject: newResult.subject
+      subject: newResult.subject,
+      marksheetUrl,
+      remarks: newResult.remarks || ''
     });
 
     setIsModalOpen(false);
@@ -37,8 +56,10 @@ export const Academics: React.FC = () => {
       date: new Date().toISOString().split('T')[0],
       marks: 0,
       totalMarks: 100,
-      subject: ''
+      subject: '',
+      remarks: ''
     });
+    setMarksheetFile(null);
   };
 
   // --- Student View ---
@@ -80,6 +101,19 @@ export const Academics: React.FC = () => {
                       <div>
                         <h4 className="font-semibold text-slate-900 text-sm">{res.examName}</h4>
                         <p className="text-xs text-slate-500 mt-0.5">{res.subject}</p>
+                        {res.marksheetUrl && (
+                          <a
+                            href={res.marksheetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 underline mt-1 block"
+                          >
+                            Download Marksheet
+                          </a>
+                        )}
+                        {res.remarks && (
+                          <div className="text-xs text-slate-500 mt-1">Remarks: {res.remarks}</div>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className={`text-sm font-bold px-2 py-1 rounded text-green-600 bg-green-50`}>
@@ -275,7 +309,26 @@ export const Academics: React.FC = () => {
                   </div>
                 </div>
 
-                <button 
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-slate-700">Marksheet (PDF/Image)</label>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                    onChange={e => setMarksheetFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-slate-700">Remarks</label>
+                  <input
+                    type="text"
+                    placeholder="Enter remarks (optional)"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={newResult.remarks}
+                    onChange={e => setNewResult({ ...newResult, remarks: e.target.value })}
+                  />
+                </div>
+                <button
                   type="submit"
                   className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition-colors shadow-lg mt-2"
                 >

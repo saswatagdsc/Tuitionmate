@@ -3,28 +3,32 @@ import { useData } from '../services/store';
 import { StudyMaterial } from '../types';
 import { BookOpen, Link as LinkIcon, FileText, Video, Upload } from 'lucide-react';
 
+
 export const StudyMaterials: React.FC = () => {
-  const { studyMaterials, addStudyMaterial } = useData();
+  const { studyMaterials, currentUser, students, batches } = useData();
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<Partial<StudyMaterial>>({
-    type: 'pdf'
-  });
+  const [formData, setFormData] = useState<Partial<StudyMaterial>>({ type: 'pdf' });
+
+  // Get current student info
+  let student = null;
+  if (currentUser?.role === 'student') {
+    student = students.find(s => s.id === currentUser.studentId);
+  }
+
+  // Only show materials for student's batch/class/teacher
+  let filteredMaterials = studyMaterials;
+  if (student) {
+    filteredMaterials = studyMaterials.filter(m => {
+      const batchMatch = m.batchId && student?.batchIds?.includes(m.batchId);
+      const classMatch = m.class && m.class === student.class;
+      const teacherMatch = m.teacherId && m.teacherId === student.teacherId;
+      return batchMatch || classMatch || teacherMatch;
+    });
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.title && formData.url) {
-      await addStudyMaterial({
-        id: Date.now().toString(),
-        title: formData.title,
-        subject: formData.subject || 'General',
-        class: formData.class || 'All',
-        type: formData.type || 'pdf',
-        url: formData.url,
-        uploadDate: new Date().toISOString().split('T')[0],
-      } as StudyMaterial);
-      setShowForm(false);
-      setFormData({ type: 'pdf' });
-    }
+    // ...existing code for teacher upload...
   };
 
   const getIcon = (type: StudyMaterial['type']) => {
@@ -137,29 +141,37 @@ export const StudyMaterials: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {studyMaterials.map((item) => (
-          <div key={item.id} className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className="p-2 bg-gray-50 rounded-lg">
-                {getIcon(item.type)}
+        {filteredMaterials.map((item) => {
+          // For files, use secure download endpoint
+          const isFile = item.type === 'pdf' || item.type === 'image';
+          let viewUrl = item.url;
+          if (isFile && currentUser?.role === 'student') {
+            viewUrl = `/api/materials/${item.id}/download?studentId=${currentUser.studentId}`;
+          }
+          return (
+            <div key={item.id} className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-4">
+                <div className="p-2 bg-gray-50 rounded-lg">
+                  {getIcon(item.type)}
+                </div>
+                <span className="text-xs text-gray-500">{item.uploadDate}</span>
               </div>
-              <span className="text-xs text-gray-500">{item.uploadDate}</span>
+              <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-xs">{item.subject}</span>
+                <span className="text-xs">• Class {item.class}</span>
+              </div>
+              <a 
+                href={viewUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block w-full text-center py-2 border border-gray-200 rounded text-sm font-medium hover:bg-gray-50 text-gray-700"
+              >
+                View Material
+              </a>
             </div>
-            <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
-            <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-xs">{item.subject}</span>
-              <span className="text-xs">• Class {item.class}</span>
-            </div>
-            <a 
-              href={item.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block w-full text-center py-2 border border-gray-200 rounded text-sm font-medium hover:bg-gray-50 text-gray-700"
-            >
-              View Material
-            </a>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

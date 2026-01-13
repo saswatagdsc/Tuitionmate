@@ -973,15 +973,90 @@ app.get('/api/materials', async (req, res) => {
     res.json(cleanList(materials));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-app.post('/api/materials', async (req, res) => {
+
+// --- Multer for material upload ---
+import multer from 'multer';
+const materialStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../uploads/materials'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+const materialUpload = multer({ storage: materialStorage });
+
+// Ensure upload dir exists
+const materialUploadDir = path.join(__dirname, '../uploads/materials');
+if (!fs.existsSync(materialUploadDir)) fs.mkdirSync(materialUploadDir, { recursive: true });
+
+// Upload material with batch/class selection
+app.post('/api/materials', materialUpload.single('file'), async (req, res) => {
   try {
-    if (!req.body.teacherId) return res.status(400).json({ error: 'teacherId is required' });
-    const material = new Material(req.body);
+    const { teacherId, title, subject, class: className, batchId, type } = req.body;
+    if (!teacherId) return res.status(400).json({ error: 'teacherId is required' });
+    if (!batchId && !className) return res.status(400).json({ error: 'batchId or class is required' });
+
+    let url = '';
+    if (req.file) {
+      url = `/uploads/materials/${req.file.filename}`;
+    }
+
+    const material = new Material({
+      id: `mat_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
+      teacherId,
+      title,
+      subject,
+      class: className,
+      batchId,
+      type,
+      url,
+      uploadDate: new Date().toISOString()
+    });
     await material.save();
+
+    // Find students in batch
+    let students = [];
+    if (batchId) {
+      students = await Student.find({ batchIds: batchId, teacherId });
+    } else if (className) {
+      students = await Student.find({ class: className, teacherId });
+    }
+
+    // Send email to all students in batch/class
+    for (const student of students) {
+      let emailText = `Dear ${student.name},\n\nNew study material has been uploaded: ${title}`;
+      if (subject) emailText += `\nSubject: ${subject}`;
+      if (url) emailText += `\nYou can download/view it here: ${url}`;
+      emailText += '\n\nRegards,\nTutorMate';
+      await sendEmail(student.email, `New Material Uploaded: ${title}`, emailText);
+    }
+
     res.json(clean(material));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Secure material download endpoint (students must be enrolled)
+app.get('/api/materials/:id/download', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { studentId } = req.query;
+    const material = await Material.findOne({ id });
+    if (!material) return res.status(404).json({ error: 'Material not found' });
+    if (!studentId) return res.status(400).json({ error: 'studentId required' });
+    const student = await Student.findOne({ id: studentId });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    // Check if student is in batch/class
+    let allowed = false;
+    if (material.batchId && student.batchIds.includes(material.batchId)) allowed = true;
+    if (material.class && student.class === material.class) allowed = true;
+    if (!allowed) return res.status(403).json({ error: 'Access denied' });
+    // Send file
+    const filePath = path.join(__dirname, '../', material.url);
+    res.download(filePath);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 // Holidays
 app.get('/api/holidays', async (req, res) => {
   try {
