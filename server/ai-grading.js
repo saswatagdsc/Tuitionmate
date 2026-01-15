@@ -7,15 +7,6 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-const allowedFields = [
-  { name: 'studentAnswer', maxCount: 1 },
-  { name: 'idealSolution', maxCount: 1 },
-  { name: 'answer', maxCount: 1 },
-  { name: 'solution', maxCount: 1 },
-  { name: 'studentFile', maxCount: 1 },
-  { name: 'solutionFile', maxCount: 1 }
-];
-
 // AI Grading and Weakness Spotter API for TutorMate
 import express from 'express';
 import fetch from 'node-fetch';
@@ -30,7 +21,7 @@ const router = express.Router();
 const getExam = () => mongoose.models.Exam;
 const getStudyMaterial = () => mongoose.models.StudyMaterial;
 
-router.post('/grade-theory', upload.fields(allowedFields), async (req, res) => {
+router.post('/grade-theory', upload.any(), async (req, res) => {
   try {
     const { maxMarks, studentId, batchId, teacherId, subject, examName, date } = req.body;
     if (!maxMarks || !studentId || !batchId || !teacherId || !subject) {
@@ -58,9 +49,13 @@ router.post('/grade-theory', upload.fields(allowedFields), async (req, res) => {
       }
     }
 
-    // Pick the first available field for each
-    let studentFile = req.files?.studentAnswer?.[0] || req.files?.answer?.[0] || req.files?.studentFile?.[0];
-    let solutionFile = req.files?.idealSolution?.[0] || req.files?.solution?.[0] || req.files?.solutionFile?.[0];
+    // Find answer and solution files by inspecting req.files
+    let studentFile = req.files?.find(f =>
+      ['studentAnswer', 'answer', 'studentFile'].includes(f.fieldname)
+    ) || req.files?.[0]; // fallback to first file
+    let solutionFile = req.files?.find(f =>
+      ['idealSolution', 'solution', 'solutionFile'].includes(f.fieldname)
+    ) || req.files?.[1]; // fallback to second file
 
     let studentAnswerText = '';
     let idealSolutionText = '';

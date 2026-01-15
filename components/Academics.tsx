@@ -22,44 +22,42 @@ export const Academics: React.FC = () => {
     e.preventDefault();
     if (!newResult.studentId || !newResult.examName || newResult.marks === undefined || !newResult.subject) return;
 
-    let marksheetUrl = undefined;
+    const formData = new FormData();
+    formData.append('studentId', newResult.studentId);
+    formData.append('teacherId', currentUser?.id || '');
+    formData.append('examName', newResult.examName);
+    formData.append('date', newResult.date || '');
+    formData.append('marks', String(newResult.marks));
+    formData.append('totalMarks', String(newResult.totalMarks));
+    formData.append('subject', newResult.subject);
+    formData.append('remarks', newResult.remarks || '');
     if (marksheetFile) {
-      const formData = new FormData();
-      formData.append('file', marksheetFile);
-      // Optionally add more fields if backend expects
-      const uploadRes = await fetch('/api/upload/marksheet', {
-        method: 'POST',
-        body: formData
-      });
-      if (uploadRes.ok) {
-        const data = await uploadRes.json();
-        marksheetUrl = data.url;
-      }
+      formData.append('marksheet', marksheetFile);
     }
 
-    addExamResult({
-      id: `e${Date.now()}`,
-      studentId: newResult.studentId,
-      examName: newResult.examName,
-      date: newResult.date!,
-      marks: Number(newResult.marks),
-      totalMarks: Number(newResult.totalMarks),
-      subject: newResult.subject,
-      marksheetUrl,
-      remarks: newResult.remarks || ''
+    // Send everything to /api/exams (backend expects all fields and file)
+    const uploadRes = await fetch('/api/exams', {
+      method: 'POST',
+      body: formData
     });
 
-    setIsModalOpen(false);
-    setNewResult({
-      studentId: '',
-      examName: '',
-      date: new Date().toISOString().split('T')[0],
-      marks: 0,
-      totalMarks: 100,
-      subject: '',
-      remarks: ''
-    });
-    setMarksheetFile(null);
+    if (uploadRes.ok) {
+      // Optionally handle response, e.g. show success
+      setIsModalOpen(false);
+      setNewResult({
+        studentId: '',
+        examName: '',
+        date: new Date().toISOString().split('T')[0],
+        marks: 0,
+        totalMarks: 100,
+        subject: '',
+        remarks: ''
+      });
+      setMarksheetFile(null);
+    } else {
+      // Optionally handle error
+      alert('Failed to upload exam result.');
+    }
   };
 
   // --- Student View ---
