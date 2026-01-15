@@ -1094,86 +1094,65 @@ const materialUpload = multer({
   limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit
 });
 
-// Upload material with batch/class selection
-app.post('/api/materials', materialUpload.single('file'), async (req, res) => {
+// Upload material with batch/class selection (accept answerFile, solutionFile, questionFile)
+app.post('/api/materials', materialUpload.fields([
+  { name: 'answerFile', maxCount: 1 },
+  { name: 'solutionFile', maxCount: 1 },
+  { name: 'questionFile', maxCount: 1 }
+]), async (req, res) => {
   try {
     const { teacherId, title, subject, class: className, batchId, type } = req.body;
-    
-    console.log('Materials upload received:', { teacherId, title, subject, className, batchId, type, hasFile: !!req.file });
-    
+    const files = req.files || {};
+    console.log('Materials upload received:', { teacherId, title, subject, className, batchId, type, files: Object.keys(files) });
+
     if (!teacherId) return res.status(400).json({ error: 'teacherId is required' });
     if (!batchId && !className) return res.status(400).json({ error: 'batchId or class is required' });
 
-    let url = '';
-    if (req.file) {
-      // Enforce file size limit (2MB) - multer already enforces this, but double check
-      if (req.file.size > 2 * 1024 * 1024) {
-        return res.status(400).json({ error: 'File too large. Max 2MB allowed.' });
+    let answerUrl = '', solutionUrl = '', questionUrl = '', solutionText = req.body.solutionText || '';
+
+    // Helper to upload a file buffer to Cloudinary
+    async function uploadToCloudinary(file, folder) {
+      if (!file) return '';
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error('File too large. Max 2MB allowed.');
       }
-      
-      // Upload to Cloudinary directly from memory buffer
-      try {
-        console.log('Uploading to Cloudinary from memory buffer:', req.file.originalname);
-        
-        // Use stream upload for buffer
-        const uploadResult = await new Promise((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            { 
-              folder: 'materials',
-              resource_type: 'auto',
-              public_id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          );
-          uploadStream.end(req.file.buffer);
-        });
-        
-        url = uploadResult.secure_url;
-        console.log('Cloudinary upload successful:', url);
-      } catch (err) {
-        console.error('Cloudinary upload error:', err);
-        return res.status(500).json({ error: 'Cloudinary upload failed: ' + err.message });
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder,
+            resource_type: 'auto',
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result.secure_url);
+          }
+        );
+        uploadStream.end(file.buffer);
+      });
+    }
+
+    try {
+      if (files.answerFile && files.answerFile[0]) {
+        answerUrl = await uploadToCloudinary(files.answerFile[0], 'materials');
       }
+      // Prefer solutionFile, fallback to questionFile
+      if (files.solutionFile && files.solutionFile[0]) {
+        solutionUrl = await uploadToCloudinary(files.solutionFile[0], 'materials');
+      } else if (files.questionFile && files.questionFile[0]) {
+        solutionUrl = await uploadToCloudinary(files.questionFile[0], 'materials');
+        questionUrl = solutionUrl;
+      }
+    } catch (err) {
+      console.error('Cloudinary upload error:', err);
+      return res.status(500).json({ error: 'Cloudinary upload failed: ' + err.message });
     }
 
-    const material = new Material({
-      id: `mat_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
-      teacherId,
-      title,
-      subject,
-      class: className,
-      batchId,
-      type,
-      url,
-      uploadDate: new Date().toISOString()
-    });
-    await material.save();
+    // Here you would call Gemini or your AI grading logic, passing answerUrl and solutionUrl (or questionUrl), and solutionText if present
+    // Example: await geminiGrade({ answerUrl, solutionUrl, solutionText, ...otherFields })
 
-    // Find students in batch
-    let students = [];
-    if (batchId) {
-      students = await Student.find({ batchIds: batchId, teacherId });
-    } else if (className) {
-      students = await Student.find({ class: className, teacherId });
-    }
-
-    // Send email to all students in batch/class
-    for (const student of students) {
-      let emailText = `Dear ${student.name},\n\nNew study material has been uploaded: ${title}`;
-      if (subject) emailText += `\nSubject: ${subject}`;
-      if (url) emailText += `\nYou can download/view it here: ${url}`;
-      emailText += '\n\nRegards,\nTutorMate';
-      await sendEmail(student.email, `New Material Uploaded: ${title}`, emailText);
-    }
-
-    res.json(clean(material));
-  } catch (e) { 
-    console.error('Materials endpoint error:', e);
-    res.status(500).json({ error: e.message }); 
-  }
+    // Save material info to DB or return URLs
+    res.json({ answerUrl, solutionUrl, questionUrl, solutionText });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // Delete material (from database and Cloudinary)
