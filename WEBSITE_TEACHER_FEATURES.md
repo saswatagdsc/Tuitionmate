@@ -77,7 +77,7 @@ Now teachers have multiple ways to access the system:
 
 ### Login Method 1: Website
 ```
-URL: https://your-domain.com
+URL: https://app.mondalsirmaths.in
 Role: Teacher
 PIN: (if configured in settings)
 ```
@@ -90,7 +90,7 @@ Secure WebView with teacher mode enabled
 
 ### Login Method 3: Website with Query Param
 ```
-URL: https://your-domain.com/?teacherApp=1
+URL: https://app.mondalsirmaths.in/?teacherApp=1
 This automatically enables teacher mode
 ```
 

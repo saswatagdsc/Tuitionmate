@@ -103,7 +103,8 @@ app.use(cors({
       'http://localhost:5173',
       'http://127.0.0.1:5173',
       'capacitor://localhost',
-      'ionic://localhost'
+      'ionic://localhost',
+      'https://app.mondalsirmaths.in'
     ];
     
     if (!origin || allowedOrigins.includes(origin)) {
@@ -1502,7 +1503,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
         // Use frontend URL from environment variable, fallback to localhost
         // Use frontend URL from environment variable, fallback to production Vercel URL, then localhost
-        const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tuitionmate.vercel.app' || 'http://localhost:3000';
+        const FRONTEND_URL = process.env.FRONTEND_URL || 'https://app.mondalsirmaths.in' || 'http://localhost:3000';
         const resetLink = `${FRONTEND_URL}/?resetToken=${token}`;
 
         const subject = "Reset Your Password - TutorMate";

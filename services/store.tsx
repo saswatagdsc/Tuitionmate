@@ -13,6 +13,9 @@ const getAPIBase = () => {
   if ((window as any).Capacitor) {
     // For Android app, connect to machine IP (set this to your dev machine IP)
     // You can also use 10.0.2.2 which is the Android emulator's localhost alias
+    if (process.env.NODE_ENV === 'production') {
+      return 'https://app.mondalsirmaths.in/api';
+    }
     return 'http://10.0.2.2:4000/api';
   }
   
