@@ -9,7 +9,7 @@ Your Fees section now has **4 powerful tabs** for complete payment management:
 | 📄 **Invoices** | View all fee invoices | Managing individual invoices, recording payments |
 | 💰 **Payments** | See payment history | Reconciling payments, viewing payment methods |
 | ⏰ **To Pay** | Find students who owe | Need to contact parents about pending fees |
-| ⚠️ **Overdue** | Urgent follow-ups | Follow up on past-due payments |
+| ⚠️ **Overdue** | Urgent follow ups | Follow up on past-due payments |
 
 ---
 
