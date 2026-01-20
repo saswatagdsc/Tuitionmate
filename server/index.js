@@ -1497,8 +1497,17 @@ app.post('/api/agent/generate', async (req, res) => {
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    
-    const responseText = response.text();
+    // Gemini SDK returns { candidates: [{ content: { parts: [{ text: ... }] } }] }
+    let responseText = '';
+    if (response && response.candidates && response.candidates[0]?.content?.parts?.[0]?.text) {
+      responseText = response.candidates[0].content.parts[0].text;
+    } else if (typeof response.text === 'function') {
+      responseText = response.text();
+    } else if (typeof response.text === 'string') {
+      responseText = response.text;
+    } else {
+      throw new Error('Gemini response format unexpected: ' + JSON.stringify(response));
+    }
     // Clean markdown code blocks if present
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
     const generatedData = JSON.parse(cleanJson);
