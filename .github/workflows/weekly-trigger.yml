@@ -1,0 +1,17 @@
+name: Weekly Teacher Agent Trigger
+
+on:
+  schedule:
+    # Runs at 09:00 UTC every Sunday
+    - cron: '0 9 * * 0'
+  workflow_dispatch: # Allows manual triggering from GitHub UI
+
+jobs:
+  trigger-agents:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger TutorMate Backend Cron
+        run: |
+          curl -X POST "${{ secrets.BACKEND_URL }}/api/cron/run-weekly-planner" \
+          -H "Content-Type: application/json" \
+          -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

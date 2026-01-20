@@ -313,15 +313,38 @@ const settingsSchema = new mongoose.Schema({
   academicYear: String
 });
 
-const authUserSchema = new mongoose.Schema({
+const agentPlanSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  passwordHash: { type: String, required: true },
-  role: { type: String, enum: ['teacher', 'superadmin'], default: 'teacher' },
-  name: String,
-  resetToken: String,
-  resetTokenExpiry: Date,
-  isFrozen: { type: Boolean, default: false }
+  teacherId: { type: String, required: true, index: true },
+  classGrade: String,
+  subject: String,
+  board: String,
+  syllabus: String,
+  startDate: String,
+  examDate: String, // Added: Exam target date
+  teachingFrequency: String,
+  sessionDuration: String,
+  // Tracking Metrics
+  currentSyllabusCompletion: { type: Number, default: 0 },
+  currentRiskLevel: { type: String, default: 'Low' }, // Low, Medium, High
+  weeksRemaining: Number,
+  
+  weeklyPlans: [{
+    weekNumber: Number,
+    startDate: String,
+    endDate: String,
+    objectives: String,
+    teachingFlow: String,
+    assignments: String,
+    assessmentPlan: String,
+    revisionStrategy: String,
+    emailContent: String,
+    riskAnalysis: String,
+    status: { type: String, default: 'pending' },
+    generatedAt: String
+  }],
+  status: { type: String, default: 'active' },
+  lastUpdated: { type: String }
 });
 
 const AuthUser = mongoose.model('AuthUser', authUserSchema);
@@ -338,6 +361,7 @@ const Expense = mongoose.model('Expense', expenseSchema);
 const Material = mongoose.model('Material', materialSchema);
 const Holiday = mongoose.model('Holiday', holidaySchema);
 const Settings = mongoose.model('Settings', settingsSchema);
+const AgentPlan = mongoose.model('AgentPlan', agentPlanSchema);
 
 // --- Helpers ---
 // Removes _id and __v from response to match frontend interface
@@ -1384,6 +1408,272 @@ const rateLimiter = (req, res, next) => {
     next();
 };
 
+// --- Teacher Agent Routes ---
+
+app.get('/api/agent/plans', async (req, res) => {
+  try {
+    const { teacherId } = req.query;
+    if (!teacherId) return res.status(400).json({ error: 'Missing teacherId' });
+    const plans = await AgentPlan.find({ teacherId });
+    res.json(plans.map(clean));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/agent/plans', async (req, res) => {
+  try {
+    const { id, teacherId, ...data } = req.body;
+    let plan = await AgentPlan.findOne({ id });
+    if (plan) {
+      Object.assign(plan, data);
+      plan.lastUpdated = new Date().toISOString();
+    } else {
+      plan = new AgentPlan({ id, teacherId, ...data, lastUpdated: new Date().toISOString() });
+    }
+    await plan.save();
+    res.json(clean(plan));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/agent/generate', async (req, res) => {
+  try {
+    const { planId, weekNumber, context } = req.body;
+    // context: { classGrade, subject, board, syllabus, ... }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "GEMINI_API_KEY not configured on server." });
+    }
+
+    const { GoogleGenAI } = await import('@google/genai');
+    const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    
+    const prompt = `
+      You are an Autonomous Teacher AI Agent for ${context.classGrade}, Subject: ${context.subject}.
+      
+      Role: Senior academic teacher and coordinator.
+      Task: Plan the teaching for Week ${weekNumber}.
+      
+      Board: ${context.board}
+      Syllabus: ${context.syllabus}
+      Start Date: ${context.startDate}
+      Exam Date: ${context.examDate || "Not scheduled"}
+      Class Schedule: ${context.teachingFrequency || "Daily"} sessions of ${context.sessionDuration || "1 hour"}
+      Previous Progress: ${context.previousProgress || "None"}
+      
+      Generate a JSON response with the following fields:
+      - objectives: Clear learning objectives.
+      - teachingFlow: Session-wise plan.
+      - assignments: Homework and practice.
+      - assessmentPlan: Weekly test/quiz details.
+      - revisionStrategy: Topics to revise.
+      - emailSubject: The subject line for the email.
+      - emailBody: The body content of the email.
+      - completionPercentage: Estimated % of syllabus completed after this week (Number).
+      - riskLevel: 'Low', 'Medium', or 'High'.
+      - riskAnalysis: Brief explanation of the risk or pacing status.
+      
+      Follow these rules for the Email:
+      Subject: Weekly Teaching Plan – Week ${weekNumber} – ${context.subject}, Class ${context.classGrade}
+      Body: Greeting, Weekly objective, Syllabus to be covered, Teaching flow, Assignment details, Test/Revision plan, Special notes (include risk analysis if high), Professional closing.
+      
+      Output ONLY valid JSON.
+    `;
+
+    const response = await client.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+    });
+    
+    const responseText = response.text();
+    // Clean markdown code blocks if present
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const generatedData = JSON.parse(cleanJson);
+
+    // Calculate week dates
+    const start = new Date(context.startDate);
+    start.setDate(start.getDate() + (weekNumber - 1) * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    const startDateStr = start.toISOString().split('T')[0];
+    const endDateStr = end.toISOString().split('T')[0];
+
+    // Update the plan in DB
+    const plan = await AgentPlan.findOne({ id: planId });
+    if (plan) {
+      // Update High Level Metrics
+      plan.currentSyllabusCompletion = generatedData.completionPercentage || plan.currentSyllabusCompletion;
+      plan.currentRiskLevel = generatedData.riskLevel || 'Low';
+
+      const weekIndex = plan.weeklyPlans.findIndex(w => w.weekNumber === weekNumber);
+      
+      // Construct combined content for storage/display
+      const emailContent = `Subject: ${generatedData.emailSubject}\n\n${generatedData.emailBody}`;
+      
+      const newWeek = {
+        weekNumber,
+        startDate: startDateStr,
+        endDate: endDateStr,
+        ...generatedData,
+        emailContent, // Store combined for frontend display
+        status: 'completed',
+        generatedAt: new Date().toISOString()
+      };
+      
+      if (weekIndex >= 0) {
+        plan.weeklyPlans[weekIndex] = newWeek;
+      } else {
+        plan.weeklyPlans.push(newWeek);
+      }
+      await plan.save();
+
+      // --- AUTOMATIC EMAIL TRIGGER ---
+      try {
+        const teacher = await AuthUser.findOne({ id: plan.teacherId });
+        if (teacher && teacher.email) {
+            console.log(`[Agent] Sending automatic plan to ${teacher.email}`);
+            await sendEmail(teacher.email, generatedData.emailSubject, generatedData.emailBody);
+        } else {
+            console.warn('[Agent] Teacher email not found, skipping auto-email.');
+        }
+      } catch (emailErr) {
+          console.error("[Agent] Failed to send email:", emailErr);
+      }
+    }
+
+    res.json(generatedData);
+
+  } catch (e) {
+    console.error("Agent Generation Error:", e);
+    // If we can't generate, return a stub so it doesn't crash the UI
+    if (e.message.includes("GEMINI_API_KEY")) {
+        res.status(500).json({ error: e.message });
+    } else {
+        res.status(500).json({ error: "AI Generation Failed: " + e.message });
+    }
+  }
+});
+
+// --- Cron Job for Weekly Automation ---
+app.post('/api/cron/run-weekly-planner', async (req, res) => {
+  const CRON_SECRET = process.env.CRON_SECRET || 'make_sure_this_is_secure';
+  if (req.headers['x-cron-secret'] !== CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid Cron Secret' });
+  }
+
+  console.log('[Cron] Starting Weekly Planner...');
+  
+  try {
+    // 1. Find all active plans
+    const activePlans = await AgentPlan.find({ status: 'active' });
+    console.log(`[Cron] Found ${activePlans.length} active plans.`);
+    
+    if (activePlans.length === 0) {
+      return res.json({ message: 'No active plans found', generatedCount: 0 });
+    }
+
+    const { GoogleGenAI } = await import('@google/genai');
+    if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
+    const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    const results = [];
+
+    // 2. Iterate and Generate
+    for (const plan of activePlans) {
+      try {
+        const nextWeekNum = (plan.weeklyPlans.length || 0) + 1;
+        console.log(`[Cron] Generating Week ${nextWeekNum} for Plan ${plan.id} (${plan.subject})`);
+
+        // Construct Context
+        const context = {
+            classGrade: plan.classGrade,
+            subject: plan.subject,
+            board: plan.board,
+            syllabus: plan.syllabus,
+            startDate: plan.startDate,
+            examDate: plan.examDate,
+            teachingFrequency: plan.teachingFrequency,
+            sessionDuration: plan.sessionDuration,
+            previousProgress: plan.weeklyPlans.map(w => `Week ${w.weekNumber}: ${w.objectives}`).join('; ')
+        };
+
+        // Reuse Prompt Logic (Simplified version of the manual one)
+        const prompt = `
+          You are an Autonomous Teacher AI Agent for ${context.classGrade}, Subject: ${context.subject}.
+          Task: Plan the teaching for Week ${nextWeekNum}.
+          Board: ${context.board}
+          Syllabus: ${context.syllabus}
+          Start Date: ${context.startDate}
+          Exam Date: ${context.examDate || "Not scheduled"}
+          Class Schedule: ${context.teachingFrequency || "Daily"} sessions of ${context.sessionDuration || "1 hour"}
+          Previous Progress: ${context.previousProgress || "None"}
+          
+          Generate a JSON response with:
+          - objectives, teachingFlow, assignments, assessmentPlan, revisionStrategy
+          - emailSubject, emailBody
+          - completionPercentage (number), riskLevel (Low/Medium/High), riskAnalysis
+          
+          Email Rules: Professional, addressed to teacher, clear weekly targets.
+          Output ONLY JSON.
+        `;
+
+        const response = await client.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: prompt,
+        });
+
+        const responseText = response.text();
+        const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const generatedData = JSON.parse(cleanJson);
+
+        // Dates
+        const start = new Date(context.startDate);
+        start.setDate(start.getDate() + (nextWeekNum - 1) * 7);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+
+        // Save
+        const newWeek = {
+            weekNumber: nextWeekNum,
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0],
+            ...generatedData,
+            emailContent: `Subject: ${generatedData.emailSubject}\n\n${generatedData.emailBody}`,
+            status: 'completed',
+            generatedAt: new Date().toISOString()
+        };
+
+        plan.weeklyPlans.push(newWeek);
+        plan.currentSyllabusCompletion = generatedData.completionPercentage || plan.currentSyllabusCompletion;
+        plan.currentRiskLevel = generatedData.riskLevel || 'Low';
+        await plan.save();
+
+        // Send Email
+        const teacher = await AuthUser.findOne({ id: plan.teacherId });
+        if (teacher && teacher.email) {
+            await sendEmail(teacher.email, generatedData.emailSubject, generatedData.emailBody);
+            results.push({ planId: plan.id, status: 'sent', email: teacher.email });
+        } else {
+            results.push({ planId: plan.id, status: 'saved_no_email' });
+        }
+
+      } catch (innerErr) {
+        console.error(`[Cron] Error processing plan ${plan.id}:`, innerErr.message);
+        results.push({ planId: plan.id, error: innerErr.message });
+      }
+    }
+
+    res.json({ success: true, results });
+
+  } catch (e) {
+    console.error("[Cron] Global Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- Authentication ---
 app.post('/api/auth/login', rateLimiter, async (req, res) => {
     const { email, password, role } = req.body; // Added role
     const ip = getClientIp(req);

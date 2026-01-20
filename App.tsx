@@ -19,8 +19,9 @@ import { Expenses } from './components/Expenses';
 import { StudyMaterials } from './components/StudyMaterials';
 import { Settings } from './components/Settings';
 import { SuperAdminDashboard } from './components/SuperAdmin';
+import { TeacherAgent } from './components/TeacherAgent';
 
-export type View = 'dashboard' | 'students' | 'batches' | 'attendance' | 'fees' | 'academics' | 'ai-tools' | 'ai-grading' | 'chat' | 'notices' | 'schedule' | 'crm' | 'expenses' | 'materials' | 'settings';
+export type View = 'dashboard' | 'students' | 'batches' | 'attendance' | 'fees' | 'academics' | 'ai-tools' | 'ai-grading' | 'chat' | 'notices' | 'schedule' | 'crm' | 'expenses' | 'materials' | 'settings' | 'teacher-agent';
 
 const MainApp: React.FC = () => {
   const { currentUser } = useData();
@@ -52,6 +53,8 @@ const MainApp: React.FC = () => {
         return <AiTools />;
       case 'ai-grading':
         return <AiTools gradingTab />;
+      case 'teacher-agent':
+        return <TeacherAgent />;
       case 'chat':
         return <Chat />;
       case 'notices':

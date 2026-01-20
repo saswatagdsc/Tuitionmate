@@ -15,7 +15,8 @@ import {
   BookOpen,
   PieChart,
   Settings,
-  X
+  X,
+  Bot
 } from 'lucide-react';
 
 interface MenuProps {
@@ -29,6 +30,7 @@ export const Menu: React.FC<MenuProps> = ({ onClose, onNavigate, currentView }) 
 
   const teacherFeatures = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={32} />, color: 'bg-blue-50 text-blue-600' },
+    { id: 'teacher-agent', label: 'Teacher Agent', icon: <Bot size={32} />, color: 'bg-indigo-50 text-indigo-700' },
     { id: 'crm', label: 'Growth Engine', icon: <UserPlus size={32} />, color: 'bg-purple-50 text-purple-600' },
     { id: 'students', label: 'Students', icon: <Users size={32} />, color: 'bg-green-50 text-green-600' },
     { id: 'batches', label: 'Batches', icon: <Users size={32} />, color: 'bg-teal-50 text-teal-600' }, 
