@@ -352,7 +352,7 @@ function arrayToString(val) {
   if (Array.isArray(val)) return JSON.stringify(val);
   return val;
 }
-['teachingFlow', 'assignments', 'assessmentPlan', 'revisionStrategy'].forEach(field => {
+['objectives', 'teachingFlow', 'assignments', 'assessmentPlan', 'revisionStrategy'].forEach(field => {
   agentPlanSchema.path('weeklyPlans').schema.path(field).set(arrayToString);
 });
 
