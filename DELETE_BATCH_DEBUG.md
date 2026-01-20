@@ -13,7 +13,7 @@ npm run dev -- --host
 
 ### Step 2: Watch Console Logs
 1. **Server Console**: Watch for logs like:
-   - "Creating batch with ID: ..."
+   - "creating batch with ID: ..."
    - "Batch saved successfully: ..."
    - "Attempting to delete batch with ID: ..."
    - "Successfully deleted batch: ..."
