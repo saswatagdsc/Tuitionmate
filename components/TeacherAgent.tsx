@@ -368,19 +368,39 @@ export const TeacherAgent: React.FC = () => {
                             <div className="md:col-span-1">
                               <h5 className="text-xs font-bold text-gray-500 uppercase mb-2">Weekly Objectives</h5>
                               <p className="text-sm text-gray-900 leading-relaxed bg-gray-50 p-3 rounded-lg border">
-                                {week.objectives}
+                                {(() => {
+                                  try {
+                                    const val = week.objectives;
+                                    if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')))
+                                      return Array.isArray(JSON.parse(val)) ? JSON.parse(val).join('\n') : JSON.stringify(JSON.parse(val), null, 2);
+                                    return val;
+                                  } catch { return week.objectives; }
+                                })()}
                               </p>
-                              
                               <h5 className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2">Revision Goal</h5>
                               <p className="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg border border-orange-100">
-                                {week.revisionStrategy}
+                                {(() => {
+                                  try {
+                                    const val = week.revisionStrategy;
+                                    if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')))
+                                      return Array.isArray(JSON.parse(val)) ? JSON.parse(val).join('\n') : JSON.stringify(JSON.parse(val), null, 2);
+                                    return val;
+                                  } catch { return week.revisionStrategy; }
+                                })()}
                               </p>
                             </div>
 
                             <div className="md:col-span-2">
                                <h5 className="text-xs font-bold text-gray-500 uppercase mb-2">Teaching Flow</h5>
                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm whitespace-pre-wrap leading-relaxed font-mono text-gray-700">
-                                 {week.teachingFlow}
+                                 {(() => {
+                                   try {
+                                     const val = week.teachingFlow;
+                                     if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')))
+                                       return Array.isArray(JSON.parse(val)) ? JSON.parse(val).join('\n') : JSON.stringify(JSON.parse(val), null, 2);
+                                     return val;
+                                   } catch { return week.teachingFlow; }
+                                 })()}
                                </div>
                             </div>
                           </div>
@@ -391,13 +411,27 @@ export const TeacherAgent: React.FC = () => {
                                 <h5 className="text-xs font-bold text-blue-700 uppercase mb-2 flex items-center gap-2">
                                   <CheckCircle size={14} /> Assignments
                                 </h5>
-                                <p className="text-sm text-blue-900">{week.assignments}</p>
+                                <p className="text-sm text-blue-900">{(() => {
+                                  try {
+                                    const val = week.assignments;
+                                    if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')))
+                                      return Array.isArray(JSON.parse(val)) ? JSON.parse(val).join('\n') : JSON.stringify(JSON.parse(val), null, 2);
+                                    return val;
+                                  } catch { return week.assignments; }
+                                })()}</p>
                              </div>
                              <div className="flex-1 bg-purple-50 p-4 rounded-xl border border-purple-100">
                                 <h5 className="text-xs font-bold text-purple-700 uppercase mb-2 flex items-center gap-2">
                                   <AlertTriangle size={14} /> Assessment
                                 </h5>
-                                <p className="text-sm text-purple-900">{week.assessmentPlan}</p>
+                                <p className="text-sm text-purple-900">{(() => {
+                                  try {
+                                    const val = week.assessmentPlan;
+                                    if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{')))
+                                      return Array.isArray(JSON.parse(val)) ? JSON.parse(val).join('\n') : JSON.stringify(JSON.parse(val), null, 2);
+                                    return val;
+                                  } catch { return week.assessmentPlan; }
+                                })()}</p>
                              </div>
                           </div>
                       

@@ -348,12 +348,12 @@ const agentPlanSchema = new mongoose.Schema({
 });
 
 // --- Fix: Cast arrays to JSON strings for weeklyPlans fields ---
-function arrayToString(val) {
-  if (Array.isArray(val)) return JSON.stringify(val);
+function arrayOrObjectToString(val) {
+  if (Array.isArray(val) || (val && typeof val === 'object')) return JSON.stringify(val);
   return val;
 }
 ['objectives', 'teachingFlow', 'assignments', 'assessmentPlan', 'revisionStrategy'].forEach(field => {
-  agentPlanSchema.path('weeklyPlans').schema.path(field).set(arrayToString);
+  agentPlanSchema.path('weeklyPlans').schema.path(field).set(arrayOrObjectToString);
 });
 
 const authUserSchema = new mongoose.Schema({
@@ -1625,7 +1625,18 @@ app.post('/api/cron/run-weekly-planner', async (req, res) => {
             examDate: plan.examDate,
             teachingFrequency: plan.teachingFrequency,
             sessionDuration: plan.sessionDuration,
-            previousProgress: plan.weeklyPlans.map(w => `Week ${w.weekNumber}: ${w.objectives}`).join('; ')
+            previousProgress: plan.weeklyPlans.map(w => {
+                let obj = w.objectives;
+                // If stringified array/object, parse and join for display
+                if (typeof obj === 'string' && (obj.startsWith('[') || obj.startsWith('{'))) {
+                  try {
+                    const parsed = JSON.parse(obj);
+                    if (Array.isArray(parsed)) return `Week ${w.weekNumber}: ${parsed.join('; ')}`;
+                    if (typeof parsed === 'object') return `Week ${w.weekNumber}: ${Object.values(parsed).join('; ')}`;
+                  } catch (e) { /* fallback to raw string */ }
+                }
+                return `Week ${w.weekNumber}: ${obj}`;
+            }).join('; ')
         };
 
         // Reuse Prompt Logic (Simplified version of the manual one)
