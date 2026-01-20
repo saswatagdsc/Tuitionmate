@@ -27,6 +27,7 @@ interface AgentPlan {
   examDate?: string;
   teachingFrequency?: string;
   sessionDuration?: string;
+  batchId?: string;
   currentSyllabusCompletion?: number;
   currentRiskLevel?: 'Low' | 'Medium' | 'High';
   weeklyPlans: WeeklyPlan[];
@@ -34,7 +35,7 @@ interface AgentPlan {
 }
 
 export const TeacherAgent: React.FC = () => {
-  const { currentUser } = useData();
+  const { currentUser, batches } = useData();
   const [plans, setPlans] = useState<AgentPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<AgentPlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,7 +51,8 @@ export const TeacherAgent: React.FC = () => {
     startDate: new Date().toISOString().split('T')[0],
     examDate: '',
     teachingFrequency: '3 classes/week',
-    sessionDuration: '60 mins'
+    sessionDuration: '60 mins',
+    batchId: ''
   });
 
   // Force usage of the production API URL as requested
@@ -89,7 +91,8 @@ export const TeacherAgent: React.FC = () => {
       teacherId: currentUser.id,
       ...formData,
       status: 'active',
-      weeklyPlans: []
+      weeklyPlans: [],
+      batchId: formData.batchId
     };
 
     try {
@@ -181,6 +184,22 @@ export const TeacherAgent: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow-md mb-6 border border-indigo-100">
           <h3 className="font-semibold mb-4">Configure New Class Agent</h3>
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Link to Batch</label>
+              <select
+                className="border p-2 rounded w-full mb-2"
+                value={formData.batchId}
+                onChange={e => setFormData({ ...formData, batchId: e.target.value })}
+                required
+              >
+                <option value="">Select Batch</option>
+                {batches
+                  .filter(b => b.teacherId === currentUser?.id)
+                  .map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.subject})</option>
+                  ))}
+              </select>
+            </div>
             <input 
               placeholder="Class / Grade (e.g. Class 10)" 
               className="border p-2 rounded"

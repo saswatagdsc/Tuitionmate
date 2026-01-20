@@ -1748,10 +1748,69 @@ app.post('/api/cron/run-weekly-planner', async (req, res) => {
             generatedAt: new Date().toISOString()
         };
 
+
         plan.weeklyPlans.push(newWeek);
         plan.currentSyllabusCompletion = generatedData.completionPercentage || plan.currentSyllabusCompletion;
         plan.currentRiskLevel = generatedData.riskLevel || 'Low';
         await plan.save();
+
+        // --- Auto-generate DailyTaskStatus for each day/session in the week ---
+        // Assume objectives or teachingFlow contains daily breakdown (string or array)
+        let dailyTopics = [];
+        try {
+          if (generatedData.teachingFlow) {
+            if (typeof generatedData.teachingFlow === 'string') {
+              // Try to parse as JSON array, else split by newline/semicolon
+              try {
+                const arr = JSON.parse(generatedData.teachingFlow);
+                if (Array.isArray(arr)) dailyTopics = arr;
+              } catch {
+                dailyTopics = generatedData.teachingFlow.split(/\n|;/).map(s => s.trim()).filter(Boolean);
+              }
+            } else if (Array.isArray(generatedData.teachingFlow)) {
+              dailyTopics = generatedData.teachingFlow;
+            }
+          }
+        } catch {}
+
+        // Fetch batchId: if plan has batchId, use it; else try to find a batch for teacher/subject/class
+        let batchId = plan.batchId;
+        if (!batchId) {
+          const batch = await Batch.findOne({
+            teacherId: plan.teacherId,
+            subject: plan.subject,
+            ...(plan.classGrade ? { classGrade: plan.classGrade } : {})
+          });
+          if (batch) batchId = batch.id;
+        }
+
+        // For each day in the week, create a DailyTaskStatus
+        for (let i = 0; i < dailyTopics.length; i++) {
+          const topic = dailyTopics[i];
+          const date = new Date(start);
+          date.setDate(date.getDate() + i);
+          await DailyTaskStatus.updateOne(
+            {
+              teacherId: plan.teacherId,
+              date: date.toISOString().split('T')[0],
+              topic: topic,
+              ...(batchId ? { batchId } : {}),
+              classGrade: plan.classGrade,
+              subject: plan.subject
+            },
+            {
+              $setOnInsert: {
+                completed: false,
+                feedback: '',
+                feedbackType: 'none',
+                sessionNumber: i + 1,
+                createdAt: new Date(),
+                ...(batchId ? { batchId } : {})
+              }
+            },
+            { upsert: true }
+          );
+        }
 
         // Send Email
         const teacher = await AuthUser.findOne({ id: plan.teacherId });
