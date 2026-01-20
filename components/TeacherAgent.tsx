@@ -412,11 +412,43 @@ export const TeacherAgent: React.FC = () => {
                                      const val = week.teachingFlow;
                                      if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
                                        const parsed = JSON.parse(val);
-                                       if (Array.isArray(parsed)) return (
-                                         <ul className="list-decimal pl-5">
-                                           {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
-                                         </ul>
-                                       );
+                                       if (Array.isArray(parsed)) {
+                                         // Render as a table if array of objects with sessionNumber/date/topic
+                                         if (parsed.length > 0 && typeof parsed[0] === 'object') {
+                                           return (
+                                             <table className="min-w-full text-xs border border-gray-300 rounded overflow-hidden">
+                                               <thead className="bg-gray-200">
+                                                 <tr>
+                                                   {Object.keys(parsed[0]).map((key) => (
+                                                     <th key={key} className="px-2 py-1 border-b border-gray-300 text-left">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>
+                                                   ))}
+                                                 </tr>
+                                               </thead>
+                                               <tbody>
+                                                 {parsed.map((row, idx) => (
+                                                   <tr key={idx} className="even:bg-gray-100">
+                                                     {Object.values(row).map((cell, cidx) => (
+                                                       <td key={cidx} className="px-2 py-1 border-b border-gray-200 align-top">
+                                                         {Array.isArray(cell)
+                                                           ? <ul className="list-disc pl-4">{cell.map((v, i) => <li key={i}>{v}</li>)}</ul>
+                                                           : typeof cell === 'object'
+                                                             ? <pre>{JSON.stringify(cell, null, 2)}</pre>
+                                                             : cell}
+                                                       </td>
+                                                     ))}
+                                                   </tr>
+                                                 ))}
+                                               </tbody>
+                                             </table>
+                                           );
+                                         }
+                                         // Otherwise, render as list
+                                         return (
+                                           <ul className="list-decimal pl-5">
+                                             {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
+                                           </ul>
+                                         );
+                                       }
                                        if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
                                      }
                                      return val;
@@ -438,11 +470,28 @@ export const TeacherAgent: React.FC = () => {
                                       const val = week.assignments;
                                       if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
                                         const parsed = JSON.parse(val);
-                                        if (Array.isArray(parsed)) return (
-                                          <ul className="list-disc pl-5">
-                                            {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
-                                          </ul>
-                                        );
+                                        if (Array.isArray(parsed)) {
+                                          // Render as card list if array of objects
+                                          if (parsed.length > 0 && typeof parsed[0] === 'object') {
+                                            return (
+                                              <div className="flex flex-col gap-2">
+                                                {parsed.map((item, idx) => (
+                                                  <div key={idx} className="bg-blue-100 rounded p-2 border border-blue-200">
+                                                    {Object.entries(item).map(([k, v]) => (
+                                                      <div key={k}><span className="font-semibold capitalize">{k}:</span> {Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</div>
+                                                    ))}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            );
+                                          }
+                                          // Otherwise, render as list
+                                          return (
+                                            <ul className="list-disc pl-5">
+                                              {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
+                                            </ul>
+                                          );
+                                        }
                                         if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
                                       }
                                       return val;
@@ -460,11 +509,28 @@ export const TeacherAgent: React.FC = () => {
                                       const val = week.assessmentPlan;
                                       if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
                                         const parsed = JSON.parse(val);
-                                        if (Array.isArray(parsed)) return (
-                                          <ul className="list-disc pl-5">
-                                            {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
-                                          </ul>
-                                        );
+                                        if (Array.isArray(parsed)) {
+                                          // Render as card list if array of objects
+                                          if (parsed.length > 0 && typeof parsed[0] === 'object') {
+                                            return (
+                                              <div className="flex flex-col gap-2">
+                                                {parsed.map((item, idx) => (
+                                                  <div key={idx} className="bg-purple-100 rounded p-2 border border-purple-200">
+                                                    {Object.entries(item).map(([k, v]) => (
+                                                      <div key={k}><span className="font-semibold capitalize">{k}:</span> {Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</div>
+                                                    ))}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            );
+                                          }
+                                          // Otherwise, render as list
+                                          return (
+                                            <ul className="list-disc pl-5">
+                                              {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
+                                            </ul>
+                                          );
+                                        }
                                         if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
                                       }
                                       return val;
