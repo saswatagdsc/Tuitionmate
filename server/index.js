@@ -1514,6 +1514,8 @@ app.post('/api/agent/generate', async (req, res) => {
       responseText = response.text();
     } else if (typeof response.text === 'string') {
       responseText = response.text;
+    } else if (response && response.error) {
+      throw new Error(JSON.stringify(response.error));
     } else {
       throw new Error('Gemini response format unexpected: ' + JSON.stringify(response));
     }
@@ -1664,7 +1666,18 @@ app.post('/api/cron/run-weekly-planner', async (req, res) => {
             contents: prompt,
         });
 
-        const responseText = response.text();
+        let responseText = '';
+        if (response && response.candidates && response.candidates[0]?.content?.parts?.[0]?.text) {
+          responseText = response.candidates[0].content.parts[0].text;
+        } else if (typeof response.text === 'function') {
+          responseText = response.text();
+        } else if (typeof response.text === 'string') {
+          responseText = response.text;
+        } else if (response && response.error) {
+          throw new Error(JSON.stringify(response.error));
+        } else {
+          throw new Error('Gemini response format unexpected: ' + JSON.stringify(response));
+        }
         const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
         const generatedData = JSON.parse(cleanJson);
 

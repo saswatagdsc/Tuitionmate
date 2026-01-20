@@ -10,8 +10,10 @@ jobs:
   trigger-agents:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger TutorMate Backend Cron
+      - name: Trigger TutorMate Backend Cron (with retries)
         run: |
-          curl -X POST "${{ secrets.BACKEND_URL }}/api/cron/run-weekly-planner" \
-          -H "Content-Type: application/json" \
-          -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+          for i in {1..5}; do
+            curl -X POST "${{ secrets.BACKEND_URL }}/api/cron/run-weekly-planner" \
+              -H "Content-Type: application/json" \
+              -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" && break || sleep 30
+          done
