@@ -1,3 +1,31 @@
+import express from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
+import fetch from 'node-fetch';
+import { generateAttendanceCSV } from './attendanceReport.js';
+import aiGradingRouter from './ai-grading.js';
+import parentReportRouter, { sendParentReportById } from './parent-report.js';
+import { v2 as cloudinary } from 'cloudinary';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, '../.env');
+dotenv.config({ path: envPath });
+
+const app = express();
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 // --- Daily Task API ---
 // Get today's tasks for a teacher
 app.get('/api/teacher/daily-tasks', async (req, res) => {
@@ -50,34 +78,6 @@ const dailyTaskStatusSchema = new mongoose.Schema({
 const DailyTaskStatus = mongoose.models.DailyTaskStatus || mongoose.model('DailyTaskStatus', dailyTaskStatusSchema);
 // Export Attendance, Student, Batch, and sendEmail for attendanceReport.js and ai-grading.js
 export { Attendance, Student, Batch, sendEmail };
-// --- Cloudinary Setup ---
-import { v2 as cloudinary } from 'cloudinary';
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-import express from 'express';
-import cors from 'cors';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import bcrypt from 'bcryptjs';
-import fetch from 'node-fetch';
-import { generateAttendanceCSV } from './attendanceReport.js';
-import aiGradingRouter from './ai-grading.js';
-import parentReportRouter, { sendParentReportById } from './parent-report.js';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const envPath = path.resolve(__dirname, '../.env');
-dotenv.config({ path: envPath });
-
-
-const app = express();
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Mount AI Grading API
 app.use('/api/ai', aiGradingRouter);
