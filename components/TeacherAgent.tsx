@@ -16,6 +16,12 @@ interface WeeklyPlan {
   status: string;
 }
 
+interface Term {
+  name: string;
+  date: string;
+  syllabus: string;
+}
+
 interface AgentPlan {
   id: string;
   teacherId: string;
@@ -24,7 +30,7 @@ interface AgentPlan {
   board: string;
   syllabus: string;
   startDate: string;
-  examDate?: string;
+  terms: Term[];
   teachingFrequency?: string;
   sessionDuration?: string;
   batchId?: string;
@@ -49,11 +55,12 @@ export const TeacherAgent: React.FC = () => {
     board: '',
     syllabus: '',
     startDate: new Date().toISOString().split('T')[0],
-    examDate: '',
+    terms: [],
     teachingFrequency: '3 classes/week',
     sessionDuration: '60 mins',
     batchId: ''
   });
+  const [newTerm, setNewTerm] = useState({ name: '', date: '', syllabus: '' });
 
   // Force usage of the production API URL as requested
   const apiUrl = 'https://api.mondalsirmaths.in/api';
@@ -92,7 +99,8 @@ export const TeacherAgent: React.FC = () => {
       ...formData,
       status: 'active',
       weeklyPlans: [],
-      batchId: formData.batchId
+      batchId: formData.batchId,
+      terms: formData.terms
     };
 
     try {
@@ -130,7 +138,7 @@ export const TeacherAgent: React.FC = () => {
             board: plan.board,
             syllabus: plan.syllabus,
             startDate: plan.startDate,
-            examDate: plan.examDate,
+            // examDate intentionally omitted; handled by backend using terms
             teachingFrequency: plan.teachingFrequency,
             sessionDuration: plan.sessionDuration,
             previousProgress: plan.weeklyPlans.map(w => `Week ${w.weekNumber}: ${w.objectives}`).join('; ')
@@ -184,6 +192,51 @@ export const TeacherAgent: React.FC = () => {
         <div className="bg-white p-6 rounded-lg shadow-md mb-6 border border-indigo-100">
           <h3 className="font-semibold mb-4">Configure New Class Agent</h3>
           <div className="grid grid-cols-2 gap-4">
+            {/* Terms/Exams Section */}
+            <div className="col-span-2 mb-2">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Exams / Terms</label>
+              <div className="space-y-2 mb-2">
+                {formData.terms.length === 0 && <div className="text-gray-400 text-sm">No terms added yet.</div>}
+                {formData.terms.map((term, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-gray-50 border rounded p-2">
+                    <span className="font-medium text-indigo-700">{term.name}</span>
+                    <span className="text-xs text-gray-500">{term.date}</span>
+                    <span className="text-xs text-gray-500 flex-1 truncate">{term.syllabus}</span>
+                    <button className="text-red-500 text-xs px-2" onClick={() => setFormData({ ...formData, terms: formData.terms.filter((_, i) => i !== idx) })}>Remove</button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 mb-2">
+                <input
+                  className="border p-2 rounded w-1/4"
+                  placeholder="Term Name"
+                  value={newTerm.name}
+                  onChange={e => setNewTerm({ ...newTerm, name: e.target.value })}
+                />
+                <input
+                  type="date"
+                  className="border p-2 rounded w-1/4"
+                  value={newTerm.date}
+                  onChange={e => setNewTerm({ ...newTerm, date: e.target.value })}
+                />
+                <input
+                  className="border p-2 rounded flex-1"
+                  placeholder="Syllabus for this term"
+                  value={newTerm.syllabus}
+                  onChange={e => setNewTerm({ ...newTerm, syllabus: e.target.value })}
+                />
+                <button
+                  className="bg-indigo-500 text-white px-3 py-2 rounded"
+                  onClick={() => {
+                    if (newTerm.name && newTerm.date && newTerm.syllabus) {
+                      setFormData({ ...formData, terms: [...formData.terms, newTerm] });
+                      setNewTerm({ name: '', date: '', syllabus: '' });
+                    }
+                  }}
+                  type="button"
+                >Add</button>
+              </div>
+            </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-gray-500 mb-1">Link to Batch</label>
               <select
@@ -364,222 +417,238 @@ export const TeacherAgent: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-8">
-                    {[...selectedPlan.weeklyPlans].reverse().map((week, idx) => (
-                      <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        {/* Week Header */}
-                        <div className="bg-indigo-900 text-white p-4 flex justify-between items-center">
-                          <h4 className="font-bold text-lg flex items-center gap-2">
-                            Week {week.weekNumber} 
-                            <span className="text-xs font-normal opacity-75 bg-indigo-800 px-2 py-0.5 rounded">
-                              {week.startDate} - {week.endDate}
-                            </span>
-                          </h4>
-                          {week.riskAnalysis && (
-                             <span className="text-xs bg-orange-500 text-white px-3 py-1 rounded-full font-medium">
-                               Risk Check: {week.riskAnalysis}
-                             </span>
-                          )}
-                        </div>
-
-                        <div className="p-5">
-                          {/* Objectives & Flow */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                            <div className="md:col-span-1">
-                              <h5 className="text-xs font-bold text-gray-500 uppercase mb-2">Weekly Objectives</h5>
-                              <div className="text-sm text-gray-900 leading-relaxed bg-gray-50 p-3 rounded-lg border">
-                                {(() => {
-                                  try {
-                                    const val = week.objectives;
-                                    if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
-                                      const parsed = JSON.parse(val);
-                                      if (Array.isArray(parsed)) return (
-                                        <ul className="list-disc pl-5">
-                                          {parsed.map((item, idx) => <li key={idx}>{item}</li>)}
-                                        </ul>
-                                      );
-                                      if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
-                                    }
-                                    return val;
-                                  } catch { return week.objectives; }
-                                })()}
+                    {[...selectedPlan.weeklyPlans].reverse().map((week, idx) => {
+                      // Find the current/next term for this week
+                      let termLabel = '';
+                      if (selectedPlan.terms && selectedPlan.terms.length > 0) {
+                        const weekStart = week.startDate;
+                        // Find the first term whose date is after or equal to this week
+                        const found = selectedPlan.terms.find(term => term.date >= weekStart);
+                        const term = found || selectedPlan.terms[selectedPlan.terms.length - 1];
+                        if (term) {
+                          termLabel = `${term.name} (${term.date})`;
+                        }
+                      }
+                      return (
+                        <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                          {/* Week Header */}
+                          <div className="bg-indigo-900 text-white p-4 flex justify-between items-center">
+                            <h4 className="font-bold text-lg flex items-center gap-2">
+                              Week {week.weekNumber}
+                              <span className="text-xs font-normal opacity-75 bg-indigo-800 px-2 py-0.5 rounded">
+                                {week.startDate} - {week.endDate}
+                              </span>
+                              {termLabel && (
+                                <span className="ml-2 text-xs bg-green-700 px-2 py-0.5 rounded-full font-medium opacity-80">
+                                  {termLabel}
+                                </span>
+                              )}
+                            </h4>
+                            {week.riskAnalysis && (
+                               <span className="text-xs bg-orange-500 text-white px-3 py-1 rounded-full font-medium">
+                                 Risk Check: {week.riskAnalysis}
+                               </span>
+                            )}
+                          </div>
+                          <div className="p-5">
+                            {/* Objectives & Flow */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                              {/* ...existing code for week details... */}
+                              <div className="md:col-span-1">
+                                <h5 className="text-xs font-bold text-gray-500 uppercase mb-2">Weekly Objectives</h5>
+                                <div className="text-sm text-gray-900 leading-relaxed bg-gray-50 p-3 rounded-lg border">
+                                  {(() => {
+                                    try {
+                                      const val = week.objectives;
+                                      if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
+                                        const parsed = JSON.parse(val);
+                                        if (Array.isArray(parsed)) return (
+                                          <ul className="list-disc pl-5">
+                                            {parsed.map((item, idx) => <li key={idx}>{item}</li>)}
+                                          </ul>
+                                        );
+                                        if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
+                                      }
+                                      return val;
+                                    } catch { return week.objectives; }
+                                  })()}
+                                </div>
+                                <h5 className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2">Revision Goal</h5>
+                                <div className="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                  {(() => {
+                                    try {
+                                      const val = week.revisionStrategy;
+                                      if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
+                                        const parsed = JSON.parse(val);
+                                        if (Array.isArray(parsed)) return (
+                                          <ul className="list-disc pl-5">
+                                            {parsed.map((item, idx) => <li key={idx}>{item}</li>)}
+                                          </ul>
+                                        );
+                                        if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
+                                      }
+                                      return val;
+                                    } catch { return week.revisionStrategy; }
+                                  })()}
+                                </div>
                               </div>
-                              <h5 className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2">Revision Goal</h5>
-                              <div className="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg border border-orange-100">
-                                {(() => {
-                                  try {
-                                    const val = week.revisionStrategy;
-                                    if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
-                                      const parsed = JSON.parse(val);
-                                      if (Array.isArray(parsed)) return (
-                                        <ul className="list-disc pl-5">
-                                          {parsed.map((item, idx) => <li key={idx}>{item}</li>)}
-                                        </ul>
-                                      );
-                                      if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
-                                    }
-                                    return val;
-                                  } catch { return week.revisionStrategy; }
-                                })()}
-                              </div>
-                            </div>
-
-                            <div className="md:col-span-2">
-                               <h5 className="text-xs font-bold text-gray-500 uppercase mb-2">Teaching Flow</h5>
-                               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm whitespace-pre-wrap leading-relaxed font-mono text-gray-700">
-                                 {(() => {
-                                   try {
-                                     const val = week.teachingFlow;
-                                     if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
-                                       const parsed = JSON.parse(val);
-                                       if (Array.isArray(parsed)) {
-                                         // Render as a table if array of objects with sessionNumber/date/topic
-                                         if (parsed.length > 0 && typeof parsed[0] === 'object') {
-                                           return (
-                                             <table className="min-w-full text-xs border border-gray-300 rounded overflow-hidden">
-                                               <thead className="bg-gray-200">
-                                                 <tr>
-                                                   {Object.keys(parsed[0]).map((key) => (
-                                                     <th key={key} className="px-2 py-1 border-b border-gray-300 text-left">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>
-                                                   ))}
-                                                 </tr>
-                                               </thead>
-                                               <tbody>
-                                                 {parsed.map((row, idx) => (
-                                                   <tr key={idx} className="even:bg-gray-100">
-                                                     {Object.values(row).map((cell, cidx) => (
-                                                       <td key={cidx} className="px-2 py-1 border-b border-gray-200 align-top">
-                                                         {Array.isArray(cell)
-                                                           ? <ul className="list-disc pl-4">{cell.map((v, i) => <li key={i}>{v}</li>)}</ul>
-                                                           : typeof cell === 'object'
-                                                             ? <pre>{JSON.stringify(cell, null, 2)}</pre>
-                                                             : cell}
-                                                       </td>
+                              <div className="md:col-span-2">
+                                 <h5 className="text-xs font-bold text-gray-500 uppercase mb-2">Teaching Flow</h5>
+                                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm whitespace-pre-wrap leading-relaxed font-mono text-gray-700">
+                                   {(() => {
+                                     try {
+                                       const val = week.teachingFlow;
+                                       if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
+                                         const parsed = JSON.parse(val);
+                                         if (Array.isArray(parsed)) {
+                                           // Render as a table if array of objects with sessionNumber/date/topic
+                                           if (parsed.length > 0 && typeof parsed[0] === 'object') {
+                                             return (
+                                               <table className="min-w-full text-xs border border-gray-300 rounded overflow-hidden">
+                                                 <thead className="bg-gray-200">
+                                                   <tr>
+                                                     {Object.keys(parsed[0]).map((key) => (
+                                                       <th key={key} className="px-2 py-1 border-b border-gray-300 text-left">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</th>
                                                      ))}
                                                    </tr>
-                                                 ))}
-                                               </tbody>
-                                             </table>
+                                                 </thead>
+                                                 <tbody>
+                                                   {parsed.map((row, idx) => (
+                                                     <tr key={idx} className="even:bg-gray-100">
+                                                       {Object.values(row).map((cell, cidx) => (
+                                                         <td key={cidx} className="px-2 py-1 border-b border-gray-200 align-top">
+                                                           {Array.isArray(cell)
+                                                             ? <ul className="list-disc pl-4">{cell.map((v, i) => <li key={i}>{v}</li>)}</ul>
+                                                             : typeof cell === 'object'
+                                                               ? <pre>{JSON.stringify(cell, null, 2)}</pre>
+                                                               : cell}
+                                                         </td>
+                                                       ))}
+                                                     </tr>
+                                                   ))}
+                                                 </tbody>
+                                               </table>
+                                             );
+                                           }
+                                           // Otherwise, render as list
+                                           return (
+                                             <ul className="list-decimal pl-5">
+                                               {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
+                                             </ul>
                                            );
                                          }
-                                         // Otherwise, render as list
-                                         return (
-                                           <ul className="list-decimal pl-5">
-                                             {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
-                                           </ul>
-                                         );
+                                         if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
                                        }
-                                       if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
-                                     }
-                                     return val;
-                                   } catch { return week.teachingFlow; }
-                                 })()}
+                                       return val;
+                                     } catch { return week.teachingFlow; }
+                                   })()}
+                                 </div>
+                              </div>
+                            </div>
+                            {/* Assignments & Assessments */}
+                            <div className="flex gap-4 mb-6">
+                               <div className="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                  <h5 className="text-xs font-bold text-blue-700 uppercase mb-2 flex items-center gap-2">
+                                    <CheckCircle size={14} /> Assignments
+                                  </h5>
+                                  <div className="text-sm text-blue-900">
+                                    {(() => {
+                                      try {
+                                        const val = week.assignments;
+                                        if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
+                                          const parsed = JSON.parse(val);
+                                          if (Array.isArray(parsed)) {
+                                            // Render as card list if array of objects
+                                            if (parsed.length > 0 && typeof parsed[0] === 'object') {
+                                              return (
+                                                <div className="flex flex-col gap-2">
+                                                  {parsed.map((item, idx) => (
+                                                    <div key={idx} className="bg-blue-100 rounded p-2 border border-blue-200">
+                                                      {Object.entries(item).map(([k, v]) => (
+                                                        <div key={k}><span className="font-semibold capitalize">{k}:</span> {Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</div>
+                                                      ))}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              );
+                                            }
+                                            // Otherwise, render as list
+                                            return (
+                                              <ul className="list-disc pl-5">
+                                                {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
+                                              </ul>
+                                            );
+                                          }
+                                          if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
+                                        }
+                                        return val;
+                                      } catch { return week.assignments; }
+                                    })()}
+                                  </div>
+                               </div>
+                               <div className="flex-1 bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                  <h5 className="text-xs font-bold text-purple-700 uppercase mb-2 flex items-center gap-2">
+                                    <AlertTriangle size={14} /> Assessment
+                                  </h5>
+                                  <div className="text-sm text-purple-900">
+                                    {(() => {
+                                      try {
+                                        const val = week.assessmentPlan;
+                                        if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
+                                          const parsed = JSON.parse(val);
+                                          if (Array.isArray(parsed)) {
+                                            // Render as card list if array of objects
+                                            if (parsed.length > 0 && typeof parsed[0] === 'object') {
+                                              return (
+                                                <div className="flex flex-col gap-2">
+                                                  {parsed.map((item, idx) => (
+                                                    <div key={idx} className="bg-purple-100 rounded p-2 border border-purple-200">
+                                                      {Object.entries(item).map(([k, v]) => (
+                                                        <div key={k}><span className="font-semibold capitalize">{k}:</span> {Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</div>
+                                                      ))}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              );
+                                            }
+                                            // Otherwise, render as list
+                                            return (
+                                              <ul className="list-disc pl-5">
+                                                {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
+                                              </ul>
+                                            );
+                                          }
+                                          if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
+                                        }
+                                        return val;
+                                      } catch { return week.assessmentPlan; }
+                                    })()}
+                                  </div>
                                </div>
                             </div>
-                          </div>
-
-                          {/* Assignments & Assessments */}
-                          <div className="flex gap-4 mb-6">
-                             <div className="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                                <h5 className="text-xs font-bold text-blue-700 uppercase mb-2 flex items-center gap-2">
-                                  <CheckCircle size={14} /> Assignments
-                                </h5>
-                                <div className="text-sm text-blue-900">
-                                  {(() => {
-                                    try {
-                                      const val = week.assignments;
-                                      if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
-                                        const parsed = JSON.parse(val);
-                                        if (Array.isArray(parsed)) {
-                                          // Render as card list if array of objects
-                                          if (parsed.length > 0 && typeof parsed[0] === 'object') {
-                                            return (
-                                              <div className="flex flex-col gap-2">
-                                                {parsed.map((item, idx) => (
-                                                  <div key={idx} className="bg-blue-100 rounded p-2 border border-blue-200">
-                                                    {Object.entries(item).map(([k, v]) => (
-                                                      <div key={k}><span className="font-semibold capitalize">{k}:</span> {Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</div>
-                                                    ))}
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            );
-                                          }
-                                          // Otherwise, render as list
-                                          return (
-                                            <ul className="list-disc pl-5">
-                                              {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
-                                            </ul>
-                                          );
-                                        }
-                                        if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
-                                      }
-                                      return val;
-                                    } catch { return week.assignments; }
-                                  })()}
+                            {/* Email Action */}
+                            <div>
+                              <details className="group">
+                                <summary className="cursor-pointer list-none">
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-indigo-600 bg-gray-100 hover:bg-indigo-50 p-3 rounded-lg transition-colors">
+                                    <Mail size={18} />
+                                    <span>Preview Automated Weekly Email</span>
+                                    <ArrowRight size={16} className="ml-auto transition-transform group-open:rotate-90" />
+                                  </div>
+                                </summary>
+                                <div className="mt-3 p-6 bg-white border-2 border-dashed border-gray-300 rounded-lg text-sm font-mono text-gray-700 whitespace-pre-wrap shadow-inner relative">
+                                  <div className="absolute top-2 right-2 text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Draft Mode</div>
+                                  {week.emailContent}
                                 </div>
-                             </div>
-                             <div className="flex-1 bg-purple-50 p-4 rounded-xl border border-purple-100">
-                                <h5 className="text-xs font-bold text-purple-700 uppercase mb-2 flex items-center gap-2">
-                                  <AlertTriangle size={14} /> Assessment
-                                </h5>
-                                <div className="text-sm text-purple-900">
-                                  {(() => {
-                                    try {
-                                      const val = week.assessmentPlan;
-                                      if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))){
-                                        const parsed = JSON.parse(val);
-                                        if (Array.isArray(parsed)) {
-                                          // Render as card list if array of objects
-                                          if (parsed.length > 0 && typeof parsed[0] === 'object') {
-                                            return (
-                                              <div className="flex flex-col gap-2">
-                                                {parsed.map((item, idx) => (
-                                                  <div key={idx} className="bg-purple-100 rounded p-2 border border-purple-200">
-                                                    {Object.entries(item).map(([k, v]) => (
-                                                      <div key={k}><span className="font-semibold capitalize">{k}:</span> {Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</div>
-                                                    ))}
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            );
-                                          }
-                                          // Otherwise, render as list
-                                          return (
-                                            <ul className="list-disc pl-5">
-                                              {parsed.map((item, idx) => <li key={idx}>{typeof item === 'string' ? item : JSON.stringify(item, null, 2)}</li>)}
-                                            </ul>
-                                          );
-                                        }
-                                        if (typeof parsed === 'object') return <pre>{JSON.stringify(parsed, null, 2)}</pre>;
-                                      }
-                                      return val;
-                                    } catch { return week.assessmentPlan; }
-                                  })()}
-                                </div>
-                             </div>
-                          </div>
-                      
-                          {/* Email Action */}
-                          <div>
-                            <details className="group">
-                              <summary className="cursor-pointer list-none">
-                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-indigo-600 bg-gray-100 hover:bg-indigo-50 p-3 rounded-lg transition-colors">
-                                  <Mail size={18} />
-                                  <span>Preview Automated Weekly Email</span>
-                                  <ArrowRight size={16} className="ml-auto transition-transform group-open:rotate-90" />
-                                </div>
-                              </summary>
-                              <div className="mt-3 p-6 bg-white border-2 border-dashed border-gray-300 rounded-lg text-sm font-mono text-gray-700 whitespace-pre-wrap shadow-inner relative">
-                                <div className="absolute top-2 right-2 text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Draft Mode</div>
-                                {week.emailContent}
-                              </div>
-                            </details>
+                              </details>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
+                {/* Removed duplicate weekly plan rendering code */}
               </div>
             </div>
           ) : (

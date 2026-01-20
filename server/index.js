@@ -374,6 +374,14 @@ const agentPlanSchema = new mongoose.Schema({
   examDate: String, // Added: Exam target date
   teachingFrequency: String,
   sessionDuration: String,
+  // NEW: Terms/Exams array
+  terms: [
+    {
+      name: String,
+      date: String,
+      syllabus: String
+    }
+  ],
   // Tracking Metrics
   currentSyllabusCompletion: { type: Number, default: 0 },
   currentRiskLevel: { type: String, default: 'Low' }, // Low, Medium, High
@@ -1493,13 +1501,15 @@ app.get('/api/agent/plans', async (req, res) => {
 
 app.post('/api/agent/plans', async (req, res) => {
   try {
-    const { id, teacherId, ...data } = req.body;
+    const { id, teacherId, terms, ...data } = req.body;
     let plan = await AgentPlan.findOne({ id });
     if (plan) {
       Object.assign(plan, data);
+      // Explicitly update terms if provided
+      if (terms) plan.terms = terms;
       plan.lastUpdated = new Date().toISOString();
     } else {
-      plan = new AgentPlan({ id, teacherId, ...data, lastUpdated: new Date().toISOString() });
+      plan = new AgentPlan({ id, teacherId, ...data, terms: terms || [], lastUpdated: new Date().toISOString() });
     }
     await plan.save();
     res.json(clean(plan));
@@ -1517,6 +1527,23 @@ app.post('/api/agent/generate', async (req, res) => {
       return res.status(500).json({ error: "GEMINI_API_KEY not configured on server." });
     }
 
+    // Fetch the plan to get terms
+    const plan = await AgentPlan.findOne({ id: planId });
+    let termForWeek = null;
+    if (plan && Array.isArray(plan.terms) && plan.terms.length > 0) {
+      // Find the term whose date is the next after this week, or the current one
+      const weekStart = new Date(context.startDate);
+      weekStart.setDate(weekStart.getDate() + (weekNumber - 1) * 7);
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      // Find the first term whose date is after or equal to this week
+      termForWeek = plan.terms.find(term => term.date >= weekStartStr) || plan.terms[plan.terms.length - 1];
+    }
+
+    // Use term-specific syllabus/date if available
+    const syllabusForWeek = termForWeek?.syllabus || context.syllabus;
+    const examDateForWeek = termForWeek?.date || context.examDate;
+    const termNameForWeek = termForWeek?.name || '';
+
     const { GoogleGenAI } = await import('@google/genai');
     const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
@@ -1527,9 +1554,10 @@ app.post('/api/agent/generate', async (req, res) => {
       Task: Plan the teaching for Week ${weekNumber}.
       
       Board: ${context.board}
-      Syllabus: ${context.syllabus}
+      Syllabus: ${syllabusForWeek}
+      Term/Exam: ${termNameForWeek}
       Start Date: ${context.startDate}
-      Exam Date: ${context.examDate || "Not scheduled"}
+      Exam Date: ${examDateForWeek || "Not scheduled"}
       Class Schedule: ${context.teachingFrequency || "Daily"} sessions of ${context.sessionDuration || "1 hour"}
       Previous Progress: ${context.previousProgress || "None"}
       
@@ -1582,13 +1610,13 @@ app.post('/api/agent/generate', async (req, res) => {
     const endDateStr = end.toISOString().split('T')[0];
 
     // Update the plan in DB
-    const plan = await AgentPlan.findOne({ id: planId });
-    if (plan) {
+    const planDoc = await AgentPlan.findOne({ id: planId });
+    if (planDoc) {
       // Update High Level Metrics
-      plan.currentSyllabusCompletion = generatedData.completionPercentage || plan.currentSyllabusCompletion;
-      plan.currentRiskLevel = generatedData.riskLevel || 'Low';
+      planDoc.currentSyllabusCompletion = generatedData.completionPercentage || planDoc.currentSyllabusCompletion;
+      planDoc.currentRiskLevel = generatedData.riskLevel || 'Low';
 
-      const weekIndex = plan.weeklyPlans.findIndex(w => w.weekNumber === weekNumber);
+      const weekIndex = planDoc.weeklyPlans.findIndex(w => w.weekNumber === weekNumber);
       
       // Construct combined content for storage/display
       const emailContent = `Subject: ${generatedData.emailSubject}\n\n${generatedData.emailBody}`;
@@ -1604,15 +1632,15 @@ app.post('/api/agent/generate', async (req, res) => {
       };
       
       if (weekIndex >= 0) {
-        plan.weeklyPlans[weekIndex] = newWeek;
+        planDoc.weeklyPlans[weekIndex] = newWeek;
       } else {
-        plan.weeklyPlans.push(newWeek);
+        planDoc.weeklyPlans.push(newWeek);
       }
-      await plan.save();
+      await planDoc.save();
 
       // --- AUTOMATIC EMAIL TRIGGER ---
       try {
-        const teacher = await AuthUser.findOne({ id: plan.teacherId });
+        const teacher = await AuthUser.findOne({ id: planDoc.teacherId });
         if (teacher && teacher.email) {
             console.log(`[Agent] Sending automatic plan to ${teacher.email}`);
             await sendEmail(teacher.email, generatedData.emailSubject, generatedData.emailBody);
@@ -1667,19 +1695,30 @@ app.post('/api/cron/run-weekly-planner', async (req, res) => {
         const nextWeekNum = (plan.weeklyPlans.length || 0) + 1;
         console.log(`[Cron] Generating Week ${nextWeekNum} for Plan ${plan.id} (${plan.subject})`);
 
+        // Determine the correct term for this week
+        let termForWeek = null;
+        if (plan && Array.isArray(plan.terms) && plan.terms.length > 0) {
+          const weekStart = new Date(plan.startDate);
+          weekStart.setDate(weekStart.getDate() + (nextWeekNum - 1) * 7);
+          const weekStartStr = weekStart.toISOString().split('T')[0];
+          termForWeek = plan.terms.find(term => term.date >= weekStartStr) || plan.terms[plan.terms.length - 1];
+        }
+        const syllabusForWeek = termForWeek?.syllabus || plan.syllabus;
+        const examDateForWeek = termForWeek?.date || plan.examDate;
+        const termNameForWeek = termForWeek?.name || '';
+
         // Construct Context
         const context = {
             classGrade: plan.classGrade,
             subject: plan.subject,
             board: plan.board,
-            syllabus: plan.syllabus,
+            syllabus: syllabusForWeek,
             startDate: plan.startDate,
-            examDate: plan.examDate,
+            examDate: examDateForWeek,
             teachingFrequency: plan.teachingFrequency,
             sessionDuration: plan.sessionDuration,
             previousProgress: plan.weeklyPlans.map(w => {
                 let obj = w.objectives;
-                // If stringified array/object, parse and join for display
                 if (typeof obj === 'string' && (obj.startsWith('[') || obj.startsWith('{'))) {
                   try {
                     const parsed = JSON.parse(obj);
@@ -1696,9 +1735,10 @@ app.post('/api/cron/run-weekly-planner', async (req, res) => {
           You are an Autonomous Teacher AI Agent for ${context.classGrade}, Subject: ${context.subject}.
           Task: Plan the teaching for Week ${nextWeekNum}.
           Board: ${context.board}
-          Syllabus: ${context.syllabus}
+          Syllabus: ${syllabusForWeek}
+          Term/Exam: ${termNameForWeek}
           Start Date: ${context.startDate}
-          Exam Date: ${context.examDate || "Not scheduled"}
+          Exam Date: ${examDateForWeek || "Not scheduled"}
           Class Schedule: ${context.teachingFrequency || "Daily"} sessions of ${context.sessionDuration || "1 hour"}
           Previous Progress: ${context.previousProgress || "None"}
           
