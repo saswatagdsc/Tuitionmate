@@ -84,7 +84,7 @@ router.post('/grade-theory', upload.any(), async (req, res) => {
     const userPrompt = `Here is the [Student_Answer]:\n${studentAnswerText}\n\nHere is the [Ideal_Solution]:\n${idealSolutionText}\n\n1. Grade the work out of ${maxMarks}.\n2. Identify the exact step where the first error occurred.\n3. Categorize the weakness into one of these tags: 'Calculation Error', 'Formula Misuse', 'Incomplete Logic', or 'Conceptual Gap'.\n4. Provide a 1-sentence encouraging feedback for the student.\n\nReturn the response STRICTLY in JSON format:\n{\n  "total_marks_awarded": float,\n  "error_step_description": "string",\n  "weakness_tag": "string",\n  "feedback_to_student": "string",\n  "remedial_topic_suggestion": "string"\n}`;
 
 
-    // Call Gemini 1.5 Pro API for AI grading
+    // Call Gemini 2.5 Flash API for AI grading
     const geminiUrl = `${process.env.GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`;
     const geminiRes = await fetch(geminiUrl, {
       method: 'POST',

@@ -49,7 +49,7 @@ export const generateNotice = async (topic: string, tone: 'formal' | 'casual' | 
     Keep it concise and clear (under 100 words).`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
@@ -68,7 +68,7 @@ export const generateStudyTip = async (subject: string): Promise<string> => {
     const prompt = `Give me one interesting, high-impact study tip or mnemonic for a high school student studying ${subject}. Keep it short and actionable.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
