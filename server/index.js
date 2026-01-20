@@ -347,6 +347,15 @@ const agentPlanSchema = new mongoose.Schema({
   lastUpdated: { type: String }
 });
 
+// --- Fix: Cast arrays to JSON strings for weeklyPlans fields ---
+function arrayToString(val) {
+  if (Array.isArray(val)) return JSON.stringify(val);
+  return val;
+}
+['teachingFlow', 'assignments', 'assessmentPlan', 'revisionStrategy'].forEach(field => {
+  agentPlanSchema.path('weeklyPlans').schema.path(field).set(arrayToString);
+});
+
 const authUserSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
