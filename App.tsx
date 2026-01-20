@@ -20,8 +20,9 @@ import { StudyMaterials } from './components/StudyMaterials';
 import { Settings } from './components/Settings';
 import { SuperAdminDashboard } from './components/SuperAdmin';
 import { TeacherAgent } from './components/TeacherAgent';
+import { DailyTasks } from './components/DailyTasks';
 
-export type View = 'dashboard' | 'students' | 'batches' | 'attendance' | 'fees' | 'academics' | 'ai-tools' | 'ai-grading' | 'chat' | 'notices' | 'schedule' | 'crm' | 'expenses' | 'materials' | 'settings' | 'teacher-agent';
+export type View = 'dashboard' | 'students' | 'batches' | 'attendance' | 'fees' | 'academics' | 'ai-tools' | 'ai-grading' | 'chat' | 'notices' | 'schedule' | 'crm' | 'expenses' | 'materials' | 'settings' | 'teacher-agent' | 'daily-tasks';
 
 const MainApp: React.FC = () => {
   const { currentUser } = useData();
@@ -55,6 +56,8 @@ const MainApp: React.FC = () => {
         return <AiTools gradingTab />;
       case 'teacher-agent':
         return <TeacherAgent />;
+      case 'daily-tasks':
+        return <DailyTasks />;
       case 'chat':
         return <Chat />;
       case 'notices':

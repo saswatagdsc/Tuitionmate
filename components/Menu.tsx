@@ -45,6 +45,7 @@ export const Menu: React.FC<MenuProps> = ({ onClose, onNavigate, currentView }) 
     { id: 'ai-tools', label: 'AI Tools', icon: <Sparkles size={32} />, color: 'bg-violet-50 text-violet-600' },
     { id: 'ai-grading', label: 'AI Grading', icon: <BookOpen size={32} />, color: 'bg-yellow-50 text-yellow-700' },
     { id: 'settings', label: 'Settings', icon: <Settings size={32} />, color: 'bg-gray-50 text-gray-600' },
+    { id: 'daily-tasks', label: 'Daily Tasks', icon: <CalendarDays size={32} />, color: 'bg-lime-50 text-lime-600' },
   ];
 
   const studentFeatures = [

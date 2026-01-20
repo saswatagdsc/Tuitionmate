@@ -1,3 +1,53 @@
+// --- Daily Task API ---
+// Get today's tasks for a teacher
+app.get('/api/teacher/daily-tasks', async (req, res) => {
+  try {
+    const { teacherId, classGrade, subject, date } = req.query;
+    if (!teacherId || !date) return res.status(400).json({ error: 'teacherId and date required' });
+    // Find all tasks for this teacher/date/class/subject
+    const filter = { teacherId, date };
+    if (classGrade) filter.classGrade = classGrade;
+    if (subject) filter.subject = subject;
+    const tasks = await DailyTaskStatus.find(filter);
+    res.json(tasks);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Mark a task as completed or update feedback
+app.post('/api/teacher/daily-tasks/update', async (req, res) => {
+  try {
+    const { teacherId, date, topic, sessionNumber, completed, feedback, feedbackType, classGrade, subject } = req.body;
+    if (!teacherId || !date || !topic) return res.status(400).json({ error: 'teacherId, date, topic required' });
+    const filter = { teacherId, date, topic };
+    if (sessionNumber) filter.sessionNumber = sessionNumber;
+    if (classGrade) filter.classGrade = classGrade;
+    if (subject) filter.subject = subject;
+    const update = {};
+    if (completed !== undefined) update.completed = completed;
+    if (feedback !== undefined) update.feedback = feedback;
+    if (feedbackType !== undefined) update.feedbackType = feedbackType;
+    const task = await DailyTaskStatus.findOneAndUpdate(filter, update, { new: true, upsert: true });
+    res.json(task);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+// --- Daily Task Status Schema ---
+const dailyTaskStatusSchema = new mongoose.Schema({
+  teacherId: { type: String, required: true, index: true },
+  classGrade: String,
+  subject: String,
+  date: { type: String, required: true }, // YYYY-MM-DD
+  topic: String,
+  sessionNumber: Number,
+  completed: { type: Boolean, default: false },
+  feedback: String, // e.g. "Too fast", "Students absent", "Planner mismatch", etc.
+  feedbackType: { type: String, enum: ['none', 'too_fast', 'too_slow', 'absent', 'planner_wrong', 'other'], default: 'none' },
+  createdAt: { type: Date, default: Date.now }
+});
+const DailyTaskStatus = mongoose.models.DailyTaskStatus || mongoose.model('DailyTaskStatus', dailyTaskStatusSchema);
 // Export Attendance, Student, Batch, and sendEmail for attendanceReport.js and ai-grading.js
 export { Attendance, Student, Batch, sendEmail };
 // --- Cloudinary Setup ---
