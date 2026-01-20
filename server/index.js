@@ -347,6 +347,17 @@ const agentPlanSchema = new mongoose.Schema({
   lastUpdated: { type: String }
 });
 
+const authUserSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  passwordHash: { type: String, required: true },
+  role: { type: String, enum: ['teacher', 'superadmin'], default: 'teacher' },
+  name: String,
+  resetToken: String,
+  resetTokenExpiry: Date,
+  isFrozen: { type: Boolean, default: false }
+});
+
 const AuthUser = mongoose.model('AuthUser', authUserSchema);
 const Student = mongoose.model('Student', studentSchema);
 const Batch = mongoose.model('Batch', batchSchema);
