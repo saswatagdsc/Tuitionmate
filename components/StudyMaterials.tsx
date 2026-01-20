@@ -50,7 +50,7 @@ export const StudyMaterials: React.FC = () => {
         fd.append('batchId', formData.batchId);
         fd.append('type', formData.type);
 
-        const res = await fetch('/api/materials', { method: 'POST', body: fd });
+        const res = await fetch('https://api.mondalsirmaths.in/api/materials', { method: 'POST', body: fd });
         if (res.ok) {
           const newMaterial = await res.json();
           materialUrl = newMaterial.url;

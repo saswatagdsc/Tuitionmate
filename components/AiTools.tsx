@@ -65,7 +65,7 @@ const AiGradingModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open
                 formData.append('studentName', currentUser.name);
                 formData.append('studentClass', currentUser.class);
               }
-              const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
+              const apiUrl = 'https://api.mondalsirmaths.in/api';
               const uploadRes = await fetch(apiUrl + '/materials', {
                 method: 'POST',
                 body: formData

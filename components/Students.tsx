@@ -761,7 +761,7 @@ export const Students: React.FC = () => {
                       className="ml-2 text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded hover:bg-blue-100 border border-slate-200"
                       onClick={e => {
                         e.stopPropagation();
-                        const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?studentId=${student.id}`;
+                        const url = `https://api.mondalsirmaths.in/api/attendance/report?studentId=${student.id}`;
                         fetch(url, { headers: { 'Accept': 'text/csv' } })
                           .then(res => res.blob())
                           .then(blob => {
@@ -794,7 +794,7 @@ export const Students: React.FC = () => {
                               const from = (document.getElementById(`from_${student.id}`) as HTMLInputElement)?.value;
                               const to = (document.getElementById(`to_${student.id}`) as HTMLInputElement)?.value;
                               if (!from || !to) { alert('Select both dates'); return; }
-                              const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?studentId=${student.id}&from=${from}&to=${to}`;
+                              const url = `https://api.mondalsirmaths.in/api/attendance/report?studentId=${student.id}&from=${from}&to=${to}`;
                               fetch(url, { headers: { 'Accept': 'text/csv' } })
                                 .then(res => res.blob())
                                 .then(blob => {

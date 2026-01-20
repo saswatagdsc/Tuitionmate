@@ -254,7 +254,7 @@ export const Batches: React.FC = () => {
                     // Use a simple upload to server/materials endpoint (reuse existing infra)
                     const formData = new FormData();
                     formData.append('file', studentImage);
-                    const uploadRes = await fetch((import.meta as any).env?.VITE_API_URL + '/materials', {
+                    const uploadRes = await fetch('https://api.mondalsirmaths.in/api/materials', {
                       method: 'POST',
                       body: formData
                     });
@@ -369,7 +369,7 @@ export const Batches: React.FC = () => {
                 </button>
                   <button
                     onClick={() => {
-                      const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?batchId=${batch.id}`;
+                      const url = `https://api.mondalsirmaths.in/api/attendance/report?batchId=${batch.id}`;
                       fetch(url, { headers: { 'Accept': 'text/csv' } })
                         .then(res => res.blob())
                         .then(blob => {
@@ -401,7 +401,7 @@ export const Batches: React.FC = () => {
                           const from = (document.getElementById(`from_batch_${batch.id}`) as HTMLInputElement)?.value;
                           const to = (document.getElementById(`to_batch_${batch.id}`) as HTMLInputElement)?.value;
                           if (!from || !to) { alert('Select both dates'); return; }
-                          const url = `${import.meta.env.VITE_API_URL || '/api'}/attendance/report?batchId=${batch.id}&from=${from}&to=${to}`;
+                          const url = `https://api.mondalsirmaths.in/api/attendance/report?batchId=${batch.id}&from=${from}&to=${to}`;
                           fetch(url, { headers: { 'Accept': 'text/csv' } })
                             .then(res => res.blob())
                             .then(blob => {

@@ -36,7 +36,7 @@ export const Academics: React.FC = () => {
     }
 
     // Send everything to /api/exams (backend expects all fields and file)
-    const uploadRes = await fetch('/api/exams', {
+    const uploadRes = await fetch('https://api.mondalsirmaths.in/api/exams', {
       method: 'POST',
       body: formData
     });

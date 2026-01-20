@@ -53,7 +53,8 @@ export const TeacherAgent: React.FC = () => {
     sessionDuration: '60 mins'
   });
 
-  const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:4000';
+  // Force usage of the production API URL as requested
+  const apiUrl = 'https://api.mondalsirmaths.in/api';
 
   useEffect(() => {
     fetchPlans();
@@ -63,7 +64,7 @@ export const TeacherAgent: React.FC = () => {
     if (!currentUser) return;
     setLoading(true);
     try {
-      const res = await fetch(`${apiUrl}/api/agent/plans?teacherId=${currentUser.id}`);
+      const res = await fetch(`${apiUrl}/agent/plans?teacherId=${currentUser.id}`);
       if (res.ok) {
         const data = await res.json();
         setPlans(data);
@@ -92,7 +93,7 @@ export const TeacherAgent: React.FC = () => {
     };
 
     try {
-      const res = await fetch(`${apiUrl}/api/agent/plans`, {
+      const res = await fetch(`${apiUrl}/agent/plans`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -114,7 +115,7 @@ export const TeacherAgent: React.FC = () => {
   const generateWeekPlan = async (plan: AgentPlan, weekNum: number) => {
     setGenerating(true);
     try {
-      const res = await fetch(`${apiUrl}/api/agent/generate`, {
+      const res = await fetch(`${apiUrl}/agent/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

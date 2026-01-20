@@ -10,7 +10,7 @@ export const gradeMathTheory = async (
   feedback_to_student: string;
   remedial_topic_suggestion: string;
 }> => {
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || '/api';
+  const apiUrl = 'https://api.mondalsirmaths.in/api';
   const res = await fetch(`${apiUrl}/ai/grade-theory`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

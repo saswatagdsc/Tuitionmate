@@ -26,7 +26,17 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        target: 'es2022'
+        target: 'es2022',
+        chunkSizeWarningLimit: 1600,
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                return 'vendor';
+              }
+            }
+          }
+        }
       }
     };
 });

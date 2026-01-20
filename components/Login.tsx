@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useData } from '../services/store';
 import { GraduationCap, ShieldCheck, Lock, Mail, UserPlus, KeyRound } from 'lucide-react';
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || '/api';
+const API_BASE = 'https://api.mondalsirmaths.in/api';
 
 export const Login: React.FC = () => {
   const { students, login } = useData();
