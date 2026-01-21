@@ -154,7 +154,8 @@ app.use(cors({
       'http://127.0.0.1:5173',
       'capacitor://localhost',
       'ionic://localhost',
-      'https://app.mondalsirmaths.in'
+      'https://app.mondalsirmaths.in',
+      'https://api.mondalsirmaths.in'
     ];
     
     if (!origin || allowedOrigins.includes(origin)) {
